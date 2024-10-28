@@ -53,11 +53,9 @@
 
   $effect(() => {
     if (map) {
-      untrack(() => {
-        if (riderMarker) {
-          riderMarker.remove();
-        }
-      });
+      if (riderMarker) {
+        riderMarker.remove();
+      }
 
       const latLng = gpsPoints[selectedRowIndex];
       if (latLng) {
@@ -81,20 +79,20 @@
   });
 
   $effect(() => {
-    untrack(() => {
+    // ensure this is updated each time the visible rows change
+    visibleRows;
+
+    basePolyline = getBaseLine(gpsPoints, gpsGaps, hiddenRideSegments).addTo(map!);
+    travelledPolyline = getTravelledLine(gpsPoints, gpsGaps, selectedRowIndex, hiddenRideSegments).addTo(map!);
+
+    return () => {
       if (basePolyline) {
         basePolyline.remove();
       }
       if (travelledPolyline) {
         travelledPolyline.remove();
       }
-    });
-
-    // ensure this is updated each time the visible rows change
-    visibleRows;
-
-    basePolyline = getBaseLine(gpsPoints, gpsGaps, hiddenRideSegments).addTo(map!);
-    travelledPolyline = getTravelledLine(gpsPoints, gpsGaps, selectedRowIndex, hiddenRideSegments).addTo(map!);
+    };
   });
 
   function setVisibleIndices() {

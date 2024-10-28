@@ -70,7 +70,7 @@ const transform = <C extends RowKey>(value: string, column: C): Row[C] => {
     case '':
       return '' as Row[C];
     case RowKey.Duty:
-      return parseFloatValue(value) * 100 as Row[C];
+      return (parseFloatValue(value) * 100) as Row[C];
     default:
       return parseFloatValue(value) as Row[C];
   }

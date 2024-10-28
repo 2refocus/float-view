@@ -13,48 +13,48 @@ describe(parseFloatControlCsv.name, () => {
   beforeEach(() => vi.restoreAllMocks());
 
   test('metric', async () => {
-    const { units, csv } = await parseFloatControlCsv(csvMetric);
+    const { units, data, error } = await parseFloatControlCsv(csvMetric);
     expect(units).toBe('metric');
-    expect(csv.errors).toEqual([]);
-    expect(csv.data).toEqual([defaultFixture]);
+    expect(error).toBeUndefined();
+    expect(data).toEqual([defaultFixture]);
   });
 
   test('metric with bms', async () => {
-    const { units, csv } = await parseFloatControlCsv(csvMetricWithBms);
+    const { units, data, error } = await parseFloatControlCsv(csvMetricWithBms);
     expect(units).toBe('metric');
-    expect(csv.errors).toEqual([]);
-    expect(csv.data).toEqual([{ ...defaultFixture, ...defaultBms }]);
+    expect(error).toBeUndefined();
+    expect(data).toEqual([{ ...defaultFixture, ...defaultBms }]);
   });
 
   test('imperial', async () => {
-    const { units, csv } = await parseFloatControlCsv(csvImperial);
+    const { units, data, error } = await parseFloatControlCsv(csvImperial);
     expect(units).toBe('imperial');
-    expect(csv.errors).toEqual([]);
-    expect(csv.data).toEqual([defaultFixture]);
+    expect(error).toBeUndefined();
+    expect(data).toEqual([defaultFixture]);
   });
 
   test('imperial with bms', async () => {
-    const { units, csv } = await parseFloatControlCsv(csvImperialWithBms);
+    const { units, data, error } = await parseFloatControlCsv(csvImperialWithBms);
     expect(units).toBe('imperial');
-    expect(csv.errors).toEqual([]);
-    expect(csv.data).toEqual([{ ...defaultFixture, ...defaultBms }]);
+    expect(error).toBeUndefined();
+    expect(data).toEqual([{ ...defaultFixture, ...defaultBms }]);
   });
 
   test('with unknown state', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockReturnValue();
-    const { units, csv } = await parseFloatControlCsv(csvWithUnknownState);
+    const { units, data, error } = await parseFloatControlCsv(csvWithUnknownState);
     expect(units).toBe('metric');
-    expect(csv.errors).toEqual([]);
-    expect(csv.data).toEqual([{ ...defaultFixture, state: 'some_new_state' }]);
+    expect(error).toBeUndefined();
+    expect(data).toEqual([{ ...defaultFixture, state: 'some_new_state' }]);
     expect(warnSpy).toHaveBeenCalledWith("Unknown state: 'SOME_NEW_STATE'");
   });
 
   test('with bad time', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockReturnValue();
-    const { units, csv } = await parseFloatControlCsv(csvWithBadtime);
+    const { units, data, error } = await parseFloatControlCsv(csvWithBadtime);
     expect(units).toBe('metric');
-    expect(csv.errors).toEqual([]);
-    expect(csv.data).toEqual([{ ...defaultFixture, time: 0 }]);
+    expect(error).toBeUndefined();
+    expect(data).toEqual([{ ...defaultFixture, time: 0 }]);
     expect(warnSpy).toHaveBeenCalledWith("Failed to parse CSV! Expected a number, but got: 'I am not a number'");
   });
 });
