@@ -4,7 +4,6 @@
   import Details from './Details.svelte';
   import Header from './Header.svelte';
   import { demoFile, demoRows } from '../lib/parse/float-control';
-  import Picker from './Picker.svelte';
   import type { DragEventHandler, EventHandler } from 'svelte/elements';
   import { DataSource, type RowWithIndex } from '../lib/parse/types';
   import Modal from './Modal.svelte';
@@ -16,6 +15,7 @@
   import { extractGpsInformation, findPointsOfInterest } from './App';
   import { type ChartKey, Charts } from './Chart';
   import { riderSvg } from './Map';
+  import PickerFull from './PickerFull.svelte';
 
   /** source of data*/
   let source = $state(DataSource.None);
@@ -188,19 +188,7 @@
   {ondrop}
 >
   <SettingsModal />
-
-  {#if !file}
-    <Picker bind:file {ondragenter} />
-  {:else if loading}
-    <Modal open closable={false} title="Loading...">
-      <div>
-        <h3 class="font-bold mb-4 animate-bounce">Parsing your ride...</h3>
-        <div class="inline-block animate-spin">
-          {@html riderSvg}
-        </div>
-      </div>
-    </Modal>
-  {/if}
+  <PickerFull bind:file bind:loading {ondragenter} />
 
   {#if draggingFile}
     <Modal title="File drag detected!" open closable={false} {ondragleave}>
