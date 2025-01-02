@@ -5,10 +5,9 @@
   import settings from '../lib/settings.svelte';
   import Button from './Button.svelte';
   import { ChartColours } from './Chart';
-  import List from './List.svelte';
   import PickerFull from './PickerFull.svelte';
+  import PlayerView from './PlayerView.svelte';
   import SettingsModal from './SettingsModal.svelte';
-  import Speedometer from './Speedometer.svelte';
 
   let loading = $state(false);
   let file = $state<File | undefined>(import.meta.env.DEV ? demoFile : undefined);
@@ -89,10 +88,42 @@
     playing = false;
   }
 
+  let svg = $state<SVGGraphicsElement | undefined>(undefined);
   function save() {
-    // FIXME: convert everything below to an SVG first, so we can get a reference to it, then:
-    // save svg innerHTML, render it to a canvas, save the canvas as an image
-    // then, save the duration of the tick, and save that
+    return new Promise((resolve, reject) => {
+      if (!svg) {
+        return reject(new Error('No SVG element found'));
+      }
+
+      const svgXml = new XMLSerializer().serializeToString(svg);
+      const svgUrl = URL.createObjectURL(new Blob([svgXml], { type: 'image/svg+xml;charset=utf-8' }));
+
+      // const boundingBox = svg.getBBox();
+      const img = new Image();
+      const width = svg.clientWidth;
+      const height = svg.clientHeight;
+      img.onload = function () {
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          return reject(new Error('Could not get 2d context'));
+        }
+
+        ctx.clearRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0);
+        URL.revokeObjectURL(svgUrl);
+        resolve(canvas.toDataURL('image/png'));
+
+        // FIXME: why is it tiny and not taking up the full canvas?
+        const i = document.createElement('img');
+        i.src = canvas.toDataURL('image/png');
+        document.body.append(i);
+      };
+
+      img.src = svgUrl;
+    });
   }
 
   // TODO: ability to render to and save to a video file
@@ -114,76 +145,80 @@
     {/if}
   </Button>
   <Button onclick={() => reset()}>reset</Button>
-  <Button onclick={() => save()}>save</Button>
+  <Button onclick={() => save().then(console.log)}>save</Button>
+</div>
+<div>
   <pre>Time till next update: {timeTillNextUpdate}ms</pre>
 </div>
-
-{#snippet configureButton()}
-  <Button onclick={() => (settings.open = true)}>set</Button>
-{/snippet}
 
 {#if file}
   {@const row = rows[currentIdx]!}
   <div class="border">
-    <div class=" flex align-center justify-center">
-      <div class="w-8/12">
-        <Speedometer title="Speed" min={0} max={50} value={row.speed} formatAsFloat />
-        <Speedometer title="Duty Cycle" min={0} max={100} step={20} value={row.duty} />
-      </div>
-    </div>
-    <div class=" flex align-center justify-center">
-      <List
-        items={[
-          {
-            label: 'Motor Current',
-            value: `${formatFloat(row.current_motor)} A`,
-            color: ChartColours.CurrentMotor,
-          },
-          ...(row.current_field_weakening !== undefined
-            ? [
-                {
-                  label: 'Field Weakening',
-                  value: `${formatFloat(row.current_field_weakening)} A`,
-                  color: ChartColours.CurrentMotor,
-                },
-              ]
-            : []),
-          '-',
-          { label: 'Temp Motor', value: `${formatFloat(row.temp_motor)}°C`, color: ChartColours.TempMotor },
-          { label: 'Temp Controller', value: `${formatFloat(row.temp_mosfet)}°C`, color: ChartColours.TempMosfet },
-          '-',
-          {
-            label: 'Spec',
-            value: settings.batterySpecs.cellCount ? `${settings.batterySpecs.cellCount}S` : configureButton,
-          },
-          '-',
-          {
-            label: 'Batt V (total)',
-            value: `${formatFloat(row.voltage)} V`,
-            color: ChartColours.BatteryVoltage,
-          },
-          {
-            label: 'Batt V (cell)',
-            value: `${voltsPerCell ? voltsPerCell.toFixed(1) : '??'} V`,
-            color: cellVoltsLow ? 'red' : ChartColours.BatteryVoltage,
-          },
-          {
-            label: 'Batt Current',
-            value: `${formatFloat(row.current_battery)} A`,
-            color: ChartColours.CurrentBattery,
-          },
-          {
-            label: 'Batt Watts',
-            value: `${formatFloat(row.current_battery * row.voltage)} W`,
-          },
-          '-',
-          {
-            label: 'Index',
-            value: (row.index + 1).toString(),
-            htmlTitle: 'Line number from the CSV file, or the specific log from the JSON file',
-          },
-        ]}
-      />
-    </div>
+    <PlayerView
+      bind:svg
+      speedometers={[
+        {
+          min: 0,
+          max: 50,
+          value: row.speed,
+          formatAsFloat: true,
+        },
+        {
+          min: 0,
+          max: 100,
+          step: 20,
+          value: row.duty,
+        },
+      ]}
+      items={[
+        'Motor',
+        {
+          label: 'Motor Current',
+          value: `${formatFloat(row.current_motor)} A`,
+          color: ChartColours.CurrentMotor,
+        },
+        ...(row.current_field_weakening !== undefined
+          ? [
+              {
+                label: 'Field Weakening',
+                value: `${formatFloat(row.current_field_weakening)} A`,
+                color: ChartColours.CurrentMotor,
+              },
+            ]
+          : []),
+        'Temperatures',
+        {
+          label: 'Temp Motor',
+          value: `${formatFloat(row.temp_motor)}°C`,
+          color: ChartColours.TempMotor,
+        },
+        {
+          label: 'Temp Controller',
+          value: `${formatFloat(row.temp_mosfet)}°C`,
+          color: ChartColours.TempMosfet,
+        },
+        'Battery',
+        { label: 'Spec', value: settings.batterySpecs.cellCount ? `${settings.batterySpecs.cellCount}S` : '??' },
+        {
+          label: 'Batt V (total)',
+          value: `${formatFloat(row.voltage)} V`,
+          color: ChartColours.BatteryVoltage,
+        },
+        {
+          label: 'Batt V (per cell)',
+          value: `${formatFloat(voltsPerCell)} V`,
+          color: cellVoltsLow ? 'red' : ChartColours.BatteryVoltage,
+        },
+        {
+          label: 'Batt Current',
+          value: `${formatFloat(row.current_battery)} A`,
+          color: ChartColours.CurrentBattery,
+        },
+        {
+          label: 'Batt Watts',
+          value: `${formatFloat(row.current_battery * row.voltage)} W`,
+        },
+      ]}
+    />
   </div>
 {/if}

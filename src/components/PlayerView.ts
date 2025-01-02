@@ -1,4 +1,4 @@
-export interface Props {
+export interface SpeedometerProps {
   min: number;
   max: number;
   value: number;
@@ -14,4 +14,16 @@ export interface Props {
   title?: string;
   redlineThresholdPct?: number;
   formatAsFloat?: boolean;
+}
+
+export interface Item {
+  label: string;
+  value: string;
+  color?: string;
+}
+
+export interface Props {
+  speedometers: SpeedometerProps[];
+  items: (Item | string)[];
+  svg?: SVGGraphicsElement;
 }
