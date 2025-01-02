@@ -158,12 +158,14 @@
       bind:svg
       speedometers={[
         {
+          title: 'Speed',
           min: 0,
           max: 50,
           value: row.speed,
           formatAsFloat: true,
         },
         {
+          title: 'Duty Cycle',
           min: 0,
           max: 100,
           step: 20,

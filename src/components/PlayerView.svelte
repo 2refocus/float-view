@@ -6,12 +6,13 @@
   // @ts-expect-error doesn't understand the svelte @const directive
   const getSpeedoTicks = (count: number) => new Array(count + 1).fill(0).map((_, i) => (i * 180) / count);
 
-  const speedoSize = 80;
+  const speedoSize = 75;
+  const gap = 5;
   const itemSize = 5;
 
   const totalSpeedoSize = speedometers.length * speedoSize;
   const totalItemSize = items.length * itemSize;
-  const totalHeight = totalSpeedoSize + 2 + totalItemSize;
+  const totalHeight = totalSpeedoSize + gap + totalItemSize;
 
   function init(node: SVGGraphicsElement) {
     svg = node;
@@ -100,7 +101,7 @@
   {/each}
 
   {#each items as item, i}
-    {@const pos = totalSpeedoSize + 2 + i * itemSize}
+    {@const pos = totalSpeedoSize + gap + i * itemSize}
     {#if typeof item === 'string'}
       <text x="2" y={pos} fill="grey" font-size="2.5" text-anchor="start" font-family="monospace">{item}</text>
       <line x1="2" y1={pos + 0.5} x2="98" y2={pos + 0.5} stroke="grey" stroke-width="0.15" />
