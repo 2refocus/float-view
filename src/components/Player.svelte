@@ -89,8 +89,8 @@
   }
 
   let svg = $state<SVGGraphicsElement | undefined>(undefined);
-  function save() {
-    return new Promise((resolve, reject) => {
+  function saveImage() {
+    return new Promise<string>((resolve, reject) => {
       if (!svg) {
         return reject(new Error('No SVG element found'));
       }
@@ -98,32 +98,81 @@
       const svgXml = new XMLSerializer().serializeToString(svg);
       const svgUrl = URL.createObjectURL(new Blob([svgXml], { type: 'image/svg+xml;charset=utf-8' }));
 
-      // const boundingBox = svg.getBBox();
       const img = new Image();
       const width = svg.clientWidth;
       const height = svg.clientHeight;
       img.onload = function () {
         const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
         const ctx = canvas.getContext('2d');
         if (!ctx) {
           return reject(new Error('Could not get 2d context'));
         }
 
+        // scale the canvas to the device pixel ratio for hidpi displays
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = width * dpr;
+        canvas.height = height * dpr;
+        ctx.scale(dpr, dpr);
+
         ctx.clearRect(0, 0, width, height);
-        ctx.drawImage(img, 0, 0);
+
+        // NOTE: I don't know why this is necessary, but both Safari and Firefox
+        // render the SVG at a different scale (and position!). Chrome seems to do
+        // the right thing...
+        const isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
+        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+        if (isFirefox) {
+          const scale = width / 70;
+          ctx.drawImage(img, 0, 0, width, height, -115 * scale, 0, width * scale, height * scale);
+        } else if (isSafari) {
+          const scale = width / 101;
+          ctx.drawImage(img, 0, 0, width, height, scale, 0, width * scale, height * scale);
+        } else {
+          ctx.drawImage(img, 0, 0);
+        }
+
         URL.revokeObjectURL(svgUrl);
         resolve(canvas.toDataURL('image/png'));
-
-        // FIXME: why is it tiny and not taking up the full canvas?
-        const i = document.createElement('img');
-        i.src = canvas.toDataURL('image/png');
-        document.body.append(i);
       };
 
       img.src = svgUrl;
     });
+  }
+
+  async function renderToImages() {
+    reset();
+
+    interface Frame {
+      imageDataUrl: string;
+      durationMs: number;
+    }
+
+    const frames: Frame[] = [];
+    await new Promise<void>((resolve) => {
+      const step = async () => {
+        if (currentIdx >= rows.length - 1) {
+          return resolve();
+        }
+
+        const prevTime = currentIdx === 0 ? 0 : rows[currentIdx - 1]!.time;
+        const currTime = rows[currentIdx]!.time;
+        frames.push({
+          imageDataUrl: await saveImage(),
+          durationMs: Math.min(currTime - prevTime, maxSecondsBetweenSteps) * 1000,
+        });
+
+        currentIdx++;
+        requestAnimationFrame(step);
+      };
+
+      requestAnimationFrame(step);
+    });
+
+    reset();
+
+    // TODO: generate a video with Recorder API
+    // https://www.geeksforgeeks.org/how-to-generate-video-from-images-in-html5/
+    frames;
   }
 
   // TODO: ability to render to and save to a video file
@@ -145,7 +194,7 @@
     {/if}
   </Button>
   <Button onclick={() => reset()}>reset</Button>
-  <Button onclick={() => save().then(console.log)}>save</Button>
+  <Button onclick={() => renderToImages()}>save</Button>
 </div>
 <div>
   <pre>Time till next update: {timeTillNextUpdate}ms</pre>
