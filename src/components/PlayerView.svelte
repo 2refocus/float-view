@@ -23,6 +23,18 @@
 </script>
 
 <svg version="1.1" viewBox="0 0 100 {totalHeight}" role="graphics-object" xmlns="http://www.w3.org/2000/svg" use:init>
+  <style>
+    /* https://design.ubuntu.com/font */
+    @font-face {
+      font-family: 'Ubuntu Mono';
+      src: url('/float-view/UbuntuMono-Regular.ttf') format('truetype');
+    }
+
+    text {
+      font-family: 'Ubuntu Mono', monospace;
+    }
+  </style>
+
   {#each speedometers as speedo, i}
     {@const step = speedo.step ?? 10}
     {@const tickCount = Math.floor((speedo.max - speedo.min) / step)}
@@ -100,16 +112,17 @@
     </g>
   {/each}
 
+  <!-- items -->
   {#each items as item, i}
     {@const pos = totalSpeedoSize + gap + i * itemSize}
     {#if typeof item === 'string'}
-      <text x="2" y={pos} fill="grey" font-size="2.5" text-anchor="start" font-family="monospace">{item}</text>
+      <text x="2" y={pos} fill="grey" font-size="2.5" text-anchor="start">{item}</text>
       <line x1="2" y1={pos + 0.5} x2="98" y2={pos + 0.5} stroke="grey" stroke-width="0.15" />
     {:else}
-      <text x="5" y={pos} fill={item.color ?? 'white'} font-size="3.5" text-anchor="start" font-family="monospace">
+      <text x="5" y={pos} fill={item.color ?? 'white'} font-size="3.5" text-anchor="start">
         {item.label}
       </text>
-      <text x="98" y={pos} fill={item.color ?? 'white'} font-size="3.5" text-anchor="end" font-family="monospace">
+      <text x="98" y={pos} fill={item.color ?? 'white'} font-size="3.5" text-anchor="end">
         {item.value}
       </text>
     {/if}
