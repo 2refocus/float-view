@@ -35,6 +35,7 @@
       <li>... or drag and drop a supported file onto this window!</li>
     </ul>
     <input
+      id="ride-file-picker"
       class="text-center file:mr-4 file:py-2 file:px-4
       file:rounded file:border file:border-solid file:border-slate-600
       file:text-sm file:font-bold file:bg-slate-700 active:file:bg-slate-800"

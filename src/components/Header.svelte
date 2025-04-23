@@ -29,7 +29,7 @@
     {/if}
   </h1>
   {#if file}
-    <Button onclick={closeRide}>close ride</Button>
+    <Button data-testid="close-ride-button" onclick={closeRide}>close ride</Button>
   {/if}
   <Button onclick={() => (settings.open = true)}>configure</Button>
 </header>
