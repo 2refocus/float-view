@@ -68,8 +68,8 @@ jobs:
           git config --global user.name  "float-view-ci"
           git config --global user.email "acheronfail+float-view-ci@gmail.com"
           git add package.json package-lock.json
-          git pull --rebase
           git commit --no-verify --message "[skip ci] ci version bump"
+          git pull --rebase
           git tag "${{ steps.meta.outputs.version }}"
           git push origin HEAD
           git push origin "${{ steps.meta.outputs.version }}"
