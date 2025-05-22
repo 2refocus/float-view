@@ -91,10 +91,10 @@ jobs:
           rm -rf dist
           export VITE_BUILD_VERSION="${{ steps.meta.outputs.version }}-${{ steps.meta.outputs.sha }}"
           npm run build -- --base=/
-          zip -r float_view.zip dist
-      - name: Upload float_view.zip to releases
+          zip -r float_view-${{ steps.meta.outputs.version }}.zip dist
+      - name: Upload float_view-${{ steps.meta.outputs.version }}.zip to releases
         uses: softprops/action-gh-release@v2
         with:
           name: "${{ steps.meta.outputs.version }}"
           tag_name: "${{ steps.meta.outputs.version }}"
-          files: float_view.zip
+          files: float_view-${{ steps.meta.outputs.version }}.zip
