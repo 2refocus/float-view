@@ -61,8 +61,10 @@ jobs:
         run: |
           echo "version=$(jq -r .version package.json)" >> "$GITHUB_OUTPUT"
           echo "sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
-      - name: Build
-        run: VITE_BUILD_VERSION="${{ steps.meta.outputs.version }}-${{ steps.meta.outputs.sha }}" npm run build
+      - name: Build for Pages
+        run: |
+          export VITE_BUILD_VERSION="${{ steps.meta.outputs.version }}-${{ steps.meta.outputs.sha }}"
+          npm run build
       - name: Push back
         run: |
           git config --global user.name  "float-view-ci"
@@ -84,8 +86,12 @@ jobs:
         uses: actions/deploy-pages@v4
 
       # publish build files to github in case others want to embed
-      - name: zip dist
-        run: zip -r float_view.zip dist
+      - name: Build for Release
+        run: |
+          rm -rf dist
+          export VITE_BUILD_VERSION="${{ steps.meta.outputs.version }}-${{ steps.meta.outputs.sha }}"
+          npm run build -- --base=/
+          zip -r float_view.zip dist
       - name: Upload float_view.zip to releases
         uses: softprops/action-gh-release@v2
         with:
