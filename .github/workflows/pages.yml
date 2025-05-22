@@ -95,6 +95,6 @@ jobs:
       - name: Upload float_view.zip to releases
         uses: softprops/action-gh-release@v2
         with:
-          name: "${{ steps.meta.outputs.version }}-${{ steps.meta.outputs.sha }}"
+          name: "${{ steps.meta.outputs.version }}"
           tag_name: "${{ steps.meta.outputs.version }}"
           files: float_view.zip
