@@ -29,6 +29,13 @@
       checked={isImperial}
       onchange={onchangeUnits}
     />
+    <Input
+      class={inputClass}
+      id="chartsUseTimeScale"
+      label="Stretch charts according to time (beta)"
+      type="checkbox"
+      bind:checked={settings.chartsUseTimeScale}
+    />
     <h3 class="font-bold text-lg my-2">Battery Specs</h3>
     <p>
       The following options help with calculating the voltage per cell, as well as configuring the voltage chart's axis

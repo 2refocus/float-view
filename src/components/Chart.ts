@@ -12,6 +12,7 @@ export interface Props {
   selectedIndex: number;
   setSelectedIdx: (index: number) => void;
   gapIndices: number[];
+  timePositions: number[];
 
   yAxis?: TickOptions;
   unit?: string;
@@ -36,7 +37,7 @@ export enum ChartColours {
 
 export type ChartFactoryFn = (
   visibleRows: RowWithIndex[],
-) => Omit<ChartProps, 'title' | 'selectedIndex' | 'setSelectedIdx' | 'gapIndices'>;
+) => Omit<ChartProps, 'title' | 'selectedIndex' | 'setSelectedIdx' | 'gapIndices' | 'timePositions'>;
 
 export const Charts = {
   Speed: (visibleRows) => ({

@@ -23,6 +23,7 @@ const HiddenStateSchema = z.nativeEnum(State).array();
 const UnitsSchema = z.nativeEnum(Units);
 
 const SavedSettingsSchema = z.object({
+  chartsUseTimeScale: z.boolean().default(false).optional(),
   batterySpecs: BatterySpecsSchema,
   hiddenStates: HiddenStateSchema,
   mapIconsGreyscale: z.boolean().default(false),
@@ -69,6 +70,9 @@ const settings = new (class {
   /** whether icons in map should be greyed out */
   mapIconsGreyscale = $state(savedSettings?.mapIconsGreyscale ?? false);
 
+  /** whether to render charts linearly or accordingly to time */
+  chartsUseTimeScale = $state(savedSettings?.chartsUseTimeScale ?? false);
+
   /*
    * derived state
    */
@@ -84,6 +88,7 @@ const settings = new (class {
   /** serialised settings */
   storedSettings = $derived(
     JSON.stringify({
+      chartsUseTimeScale: this.chartsUseTimeScale,
       batterySpecs: this.batterySpecs,
       hiddenStates: this.hiddenStates,
       mapIconsGreyscale: this.mapIconsGreyscale,

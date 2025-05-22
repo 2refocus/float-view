@@ -12,10 +12,18 @@
   import Button from './Button.svelte';
   import { parse, supportedMimeTypes } from '../lib/parse';
   import { globalState } from '../lib/global.svelte';
-  import { extractGpsInformation, findPointsOfInterest } from './App';
+  import { computeTimePositions, extractGpsInformation, findPointsOfInterest } from './App';
   import { type ChartKey, Charts } from './Chart';
   import { riderSvg } from './Map';
   import PickerFull from './PickerFull.svelte';
+
+  if (import.meta.env.DEV) {
+    window.addEventListener('keydown', e => {
+      if (e.key == " ") {
+        settings.chartsUseTimeScale = !settings.chartsUseTimeScale
+      }
+    })
+  }
 
   /** source of data*/
   let source = $state(DataSource.None);
@@ -53,6 +61,8 @@
   let selectedIndex = $state(0);
   /** on small devices be able to swap map and details views */
   let swapMapAndDetails = $state(false);
+  /** pre-compute x coordinates when stretching charts to align with real-world times */
+  let timePositions = $derived.by(() => computeTimePositions(visibleRows, gpsGaps, settings.chartsUseTimeScale));
 
   const setVisible = (arrayAsMap: boolean[]) => {
     visible = arrayAsMap;
@@ -241,10 +251,24 @@
         {/each}
       </select>
       {#if Charts[key]}
-        <Chart title={key} {selectedIndex} {setSelectedIdx} {gapIndices} {...Charts[key](visibleRows)} />
+        <Chart
+          title={key}
+          {selectedIndex}
+          {setSelectedIdx}
+          {gapIndices}
+          {timePositions}
+          {...Charts[key](visibleRows)}
+        />
       {:else}
         {@const fallback = defaultSelectedCharts[index]!}
-        <Chart title={fallback} {selectedIndex} {setSelectedIdx} {gapIndices} {...Charts[fallback](visibleRows)} />
+        <Chart
+          title={fallback}
+          {selectedIndex}
+          {setSelectedIdx}
+          {gapIndices}
+          {timePositions}
+          {...Charts[fallback](visibleRows)}
+        />
       {/if}
     </div>
   {/each}

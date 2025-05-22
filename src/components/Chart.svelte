@@ -11,6 +11,7 @@
   import { assert, formatFloat } from '../lib/misc';
   import { untrack } from 'svelte';
   import { type Props, ticks } from './Chart';
+  import settings from '../lib/settings.svelte';
 
   const DEFAULT_COLOUR = 'white';
 
@@ -31,7 +32,6 @@
   const GAP_LINE_DASHARRAY = '1 1';
 
   const getYValueHeight = (y: number, min: number, max: number) => ((y - min) / (max - min)) * 100;
-  const indexToXPct = (i: number): number => (100 / dataPointsLen) * (i + 0.5);
   const valueToYPct = (y: number, min: number, max: number) => 100 - getYValueHeight(y, min, max);
   // FIXME: better aggregation for this one? e.g., can't see lowest battery voltage value...
   const aggMaxAbs = (acc: number, n: number) => (Math.abs(acc) > Math.abs(n) ? acc : n);
@@ -55,11 +55,17 @@
     yAxis,
     showMax,
     showMin,
+    timePositions,
   }: Props = $props();
   let dataLen = $derived(data[0]?.values.length ?? 0);
   assert(
     data.every(({ values }) => values.length === dataLen),
     'All input data lists must be the same length',
+  );
+
+  // const indexToXPct = (i: number): number => (100 / dataPointsLen) * (i + 0.5);
+  let indexToXPct = $derived<(i: number) => number>(
+    settings.chartsUseTimeScale ? (i) => timePoints[i]! : (i) => (100 / dataPointsLen) * (i + 0.5),
   );
 
   /** wrapper svg element */
@@ -70,6 +76,7 @@
   /** scaled points representing the data */
   let dataPoints = $state<number[][]>(data.map(() => []));
   let dataPointsLen = $derived(dataPoints[0]?.length ?? 0);
+  let timePoints = $state<number[]>([]);
   /** start and end coordinates of where 0 is on the x axis */
   let zeroPath = $state<[[number, number], [number, number]] | undefined>();
   /** x coordinate of where the vertical line indicator should be */
@@ -88,12 +95,14 @@
     chunkSize = Math.max(1, Math.floor(dataLen / pixelWidth));
     scaleFactor = pixelWidth / 100;
 
-    dataPoints = data.map(({ values }) => {
+    timePoints = [];
+    dataPoints = data.map(({ values }, i) => {
       const aggregated: number[] = [];
       for (let i = 0; i < values.length; i += chunkSize) {
         const chunk = values.slice(i, i + chunkSize);
         if (chunk.length) {
           aggregated.push(chunk.reduce(aggMaxAbs));
+          timePoints.push(timePositions[i]!);
         }
       }
 
@@ -140,7 +149,8 @@
     const pixelX = clientX - bounds.left;
 
     // translate from visible indices to real indices
-    setSelectedIdx(Math.max(Math.min(Math.floor(pixelX * (dataLen / bounds.width)), dataLen - 1), 0));
+    const idx = Math.floor(pixelX * (dataLen / bounds.width));
+    setSelectedIdx(Math.max(Math.min(idx, dataLen - 1), 0));
   };
 
   const onmousemove: MouseEventHandler<SVGSVGElement> = (e) => selectPoint(e.clientX);
@@ -281,8 +291,8 @@
             fill="none"
             stroke={data[i]?.color ?? DEFAULT_COLOUR}
             d="M{values
-              .map((y, i) => {
-                const pixelX = indexToXPct(i) * scaleFactor;
+              .map((y, j) => {
+                const pixelX = indexToXPct(j) * scaleFactor;
                 const pixelY = valueToYPct(Number.isNaN(y) ? 0 : y, yTickMin, yTickMax) * scaleFactor;
                 return `${pixelX},${pixelY}`;
               })

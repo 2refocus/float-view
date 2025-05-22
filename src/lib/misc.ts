@@ -1,7 +1,7 @@
 import { Units } from './parse/types';
 
 export function assert(value: boolean, message: string) {
-  if (!value) {
+  if (import.meta.env.DEV && !value) {
     throw new Error(`Failed assertion: ${message}`);
   }
 }

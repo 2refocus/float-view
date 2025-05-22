@@ -1,4 +1,4 @@
-import { DataSource, State, type RowWithIndex } from '../lib/parse/types';
+import { DataSource, State, type RowWithIndex, RowKey } from '../lib/parse/types';
 import settings from '../lib/settings.svelte';
 import type { PointOfInterest } from './Map';
 
@@ -19,6 +19,29 @@ export const getChargeThreshold = () => {
 export interface GpsGap {
   index: number;
   secondsElapsed: number;
+}
+
+export function computeTimePositions(visibleRows: RowWithIndex[], gpsGaps: GpsGap[], useTimeScale: boolean): number[] {
+  if (!useTimeScale) {
+    console.log(visibleRows.length);
+    return visibleRows.map((_, i) => (100 / visibleRows.length) * (i + 0.5));
+  }
+
+  const times = visibleRows.map((row) => row[RowKey.Time]);
+  const timeSlices = gpsGaps.map(({ index }, i) => {
+    const endIndex = i == gpsGaps.length - 1 ? undefined : gpsGaps[i + 1]!.index;
+    return times.slice(index, endIndex);
+  });
+
+  const normalisedSlices = timeSlices.map((times) => {
+    const start = Math.min(...times);
+    const end = Math.max(...times);
+    const size = end - start;
+    return times.map((time) => (time - start) / size);
+  });
+
+  const sliceSize = 100 / gpsGaps.length;
+  return normalisedSlices.flatMap((slice, i) => slice.map((x) => x * sliceSize + i * sliceSize));
 }
 
 export function extractGpsInformation(rows: RowWithIndex[], source: DataSource) {
