@@ -12,6 +12,7 @@ permissions:
   pages: write
   id-token: write
   # GitHub Pages only needs `read`, but we have `write` so we can push commits
+  # as well as create github releases and upload assets to them
   contents: write
 
 # Allow only one concurrent deployment
@@ -55,8 +56,13 @@ jobs:
         run: |
           npm run ci:bump
           npm i --package-lock-only
+      - name: Extract version
+        id: meta
+        run: |
+          echo "version=$(jq -r .version package.json)" >> "$GITHUB_OUTPUT"
+          echo "sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
       - name: Build
-        run: VITE_BUILD_VERSION="$(jq -r .version ./package.json)-$(git rev-parse --short HEAD)" npm run build
+        run: VITE_BUILD_VERSION="${{ steps.meta.outputs.version }}-${{ steps.meta.outputs.sha }}" npm run build
       - name: Push back
         run: |
           git config --global user.name  "float-view-ci"
@@ -74,3 +80,12 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      # publish build files to github in case others want to embed
+      - name: zip dist
+        run: zip -r float_view.zip dist
+      - name: Upload float_view.zip to releases
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "${{ steps.meta.outputs.version }}-${{ steps.meta.outputs.sha }}"
+          files: float_view.zip
