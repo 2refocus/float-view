@@ -19,7 +19,6 @@ setup:
   if [ -z "${CI:-}" ]; then
     echo "setting up git hooks..."
     create_hook "pre-commit" "just _git-pre-commit"
-    create_hook "commit-msg" "just _git-commit-msg \$1"
   fi
 
 # run the local dev server
@@ -29,6 +28,9 @@ dev *args:
 # run the tests
 test *args:
   npm run tests -- --watch {{args}}
+
+bump +type: test
+  npm version "{{ type }}" --message "v%s" --force
 
 _pre_commit_start:
   #!/usr/bin/env bash
@@ -57,7 +59,3 @@ _pre_commit_clean:
 
 _git-pre-commit: _pre_commit_start && _pre_commit_clean
   npm run checks
-
-[no-exit-message]
-_git-commit-msg path:
-  @if ! [[ "$(head -n1 {{path}})" =~ ^(major|minor|patch):|\[skip\ ci\] ]]; then echo "Commit message must start with 'patch:', 'minor:' or 'major:'"; false; fi
