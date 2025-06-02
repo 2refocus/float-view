@@ -25,11 +25,15 @@ setup:
 dev *args:
   npm run dev -- {{args}}
 
-# run the tests
+# run the tests in watch mode
 test *args:
   npm run tests -- --watch {{args}}
 
-bump +type: test
+# run all checks once
+checks:
+  npm run checks
+
+bump +type: checks
   npm version "{{ type }}" --message "v%s" --force
 
 _pre_commit_start:
