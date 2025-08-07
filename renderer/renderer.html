@@ -4,8 +4,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Float View Renderer</title>
-    <script src="/webm-writer2.js" type="text/javascript"></script>
-    <script src="/node_modules/papaparse/papaparse.min.js" type="text/javascript"></script>
     <style>
       html {
         background-color: black;
@@ -33,16 +31,30 @@
   <body>
     <input type="file" id="fileInput" accept=".csv" />
     <button onclick="main().catch(console.error)">render</button>
+    <progress id="progress"></progress>
     <pre id="output"></pre>
     <script>
-      const FPS = 30;
-      const WIDTH = 640;
-      const HEIGHT = 480;
-
       /** @type {HTMLInputElement} */
       const fileInput = document.getElementById('fileInput');
       /** @type {HTMLPreElement} */
       const outputPre = document.getElementById('output');
+      /** @type {HTMLProgressElement} */
+      const progress = document.getElementById('progress');
+
+      const worker = new Worker('/worker.js');
+      worker.addEventListener('message', (e) => {
+        if (e.data.type === 'log') {
+          outputPre.innerText += `LOG: ${e.data.message}\n`;
+        }
+        if (e.data.type === 'progress') {
+          outputPre.innerText += `Rendered ${e.data.frameNumber} frames\n`;
+        }
+        if (e.data.type === 'complete') {
+          outputPre.innerText += `Complete!\n`;
+        }
+
+        outputPre.scrollTop = outputPre.scrollHeight;
+      });
 
       async function main() {
         if (fileInput.files.length === 0) {
@@ -50,40 +62,7 @@
           return;
         }
 
-        // read csv data
-
-        const file = fileInput.files[0];
-        Papa.parse(file, {
-          header: true,
-          skipEmptyLines: true,
-          complete: (results) => {
-            generateWebmVideo(results.data);
-          },
-        });
-      }
-
-      async function generateWebmVideo(csvData) {
-        // setup canvas
-
-        /** @type {HTMLCanvasElement} */
-        const canvas = document.createElement('canvas');
-        canvas.width = WIDTH;
-        canvas.height = HEIGHT;
-        /** @type {CanvasRenderingContext2D} */
-        const ctx = canvas.getContext('2d');
-
-        function draw(data) {
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          ctx.fillStyle = 'white';
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          ctx.fillStyle = 'black';
-          ctx.font = '20px Arial';
-          ctx.fillText(`Speed: ${data['Speed(km/h)']} km/h`, 10, 50);
-        }
-
-        // create output writer
-
-        const fileHandle = await window.showSaveFilePicker({
+        const outputFileHandle = await window.showSaveFilePicker({
           startIn: 'videos',
           suggestedName: 'myVideo.webm',
           types: [
@@ -94,92 +73,16 @@
           ],
         });
 
-        fileWritableStream = await fileHandle.createWritable();
-
-        const writer = new WebMWriter({
-          fileWriter: fileWritableStream,
-          codec: 'VP8',
-          width: canvas.width,
-          height: canvas.height,
-          frameRate: FPS,
-        });
-
-        // create encoder
-
-        const encoderConfig = {
-          codec: 'vp8',
-          width: canvas.width,
-          height: canvas.height,
-          bitrate: 2_000_000, // 2 Mbps
-          framerate: FPS,
-        };
-
-        const { supported } = await VideoEncoder.isConfigSupported(encoderConfig);
-        if (!supported) {
-          alert('VideoEncoder is not supported in this browser.');
-          return;
-        }
-
-        const encoder = new VideoEncoder({
-          output: (chunk, metadata) => {
-            writer.addFrame(chunk);
+        const canvas = document.createElement('canvas');
+        const offscreen = canvas.transferControlToOffscreen();
+        worker.postMessage(
+          {
+            inputFile: fileInput.files[0],
+            outputFileHandle,
+            canvas: offscreen,
           },
-          error: (e) => {
-            console.error(e);
-          },
-        });
-        encoder.configure(encoderConfig);
-
-        // render frames
-        // TODO: don't render during pauses - could be rendering hours of nothing
-        // TODO: calculate total frames needed, and show progress bar
-
-        const start = performance.now();
-        const frameDurationMicros = 1_000_000 / FPS;
-        let frameNumber = 0;
-        for (let i = 0; i < csvData.length; i++) {
-          const data = csvData[i];
-          const timeMicros = data['Time(s)'] * 1_000_000;
-
-          // render frame
-          draw(data);
-
-          // encode frames until time is reached
-          while (true) {
-            // render as fast as the encoder can handle (otherwise we'll OOM by generating too many frames)
-            while (encoder.encodeQueueSize > 30) {
-              await new Promise((resolve) => setTimeout(resolve, 10));
-            }
-
-            frameNumber++;
-
-            // TODO: this made rendering take 2-3x as long! should move rendering to a worker
-            if (frameNumber % 100 === 0) {
-              outputPre.innerText += `Rendering frame ${frameNumber}\n`;
-              outputPre.scrollTop = outputPre.scrollHeight;
-            }
-
-            const frameTime = Math.round(frameNumber * frameDurationMicros);
-            const frame = new VideoFrame(canvas, { timestamp: frameTime });
-            frame.timestamp = frameTime;
-            encoder.encode(frame, { keyFrame: frameNumber % FPS === 0 });
-            frame.close();
-
-            if (frameTime >= timeMicros) {
-              break;
-            }
-          }
-        }
-
-        await encoder.flush();
-        encoder.close();
-
-        const duration = performance.now() - start;
-        console.log(`Rendered ${frameNumber} frames in ${duration.toFixed(2)} ms`);
-        console.log(`Average frame time: ${(duration / frameNumber).toFixed(2)} ms`);
-
-        await writer.complete();
-        fileWritableStream.close();
+          [offscreen],
+        );
       }
     </script>
   </body>
