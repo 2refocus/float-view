@@ -42,6 +42,7 @@
       const progress = document.getElementById('progress');
 
       const worker = new Worker('/worker.js');
+      let complete = false;
       worker.addEventListener('message', (e) => {
         if (e.data.type === 'log') {
           outputPre.innerText += `LOG: ${e.data.message}\n`;
@@ -50,6 +51,7 @@
           outputPre.innerText += `Rendered ${e.data.frameNumber} frames\n`;
         }
         if (e.data.type === 'complete') {
+          complete = true;
           outputPre.innerText += `Complete!\n`;
         }
 
@@ -75,14 +77,22 @@
 
         const canvas = document.createElement('canvas');
         const offscreen = canvas.transferControlToOffscreen();
+        complete = false;
         worker.postMessage(
           {
+            type: 'start',
             inputFile: fileInput.files[0],
             outputFileHandle,
             canvas: offscreen,
           },
           [offscreen],
         );
+
+        while (!complete) {
+          console.log('update');
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          worker.postMessage({ type: 'update' });
+        }
       }
     </script>
   </body>

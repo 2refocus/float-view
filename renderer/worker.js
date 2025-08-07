@@ -1,7 +1,7 @@
 this.importScripts('/webm-writer2.js', '/node_modules/papaparse/papaparse.min.js');
 
 this.addEventListener('message', (e) => {
-  if ('inputFile' in e.data && 'outputFileHandle' in e.data && 'canvas' in e.data) {
+  if (e.data.type === 'start') {
     this.postMessage({ type: 'log', message: 'Reading CSV...' });
     Papa.parse(e.data.inputFile, {
       header: true,
@@ -12,11 +12,17 @@ this.addEventListener('message', (e) => {
       },
     });
   }
+
+  if (e.data.type === 'update') {
+    this.postMessage({ type: 'log', message: `Frames rendered: ${frameNumber}` });
+  }
 });
 
 const FPS = 30;
 const WIDTH = 640;
 const HEIGHT = 480;
+
+let frameNumber = 0;
 
 /**
  *
@@ -87,9 +93,9 @@ async function generateVideo(fileHandle, canvas, csvData) {
   // TODO: don't render during pauses - could be rendering hours of nothing
   // TODO: calculate total frames needed, and show progress bar
 
+  frameNumber = 0;
   const start = performance.now();
   const frameDurationMicros = 1_000_000 / FPS;
-  let frameNumber = 0;
   for (let i = 0; i < csvData.length; i++) {
     const data = csvData[i];
     const timeMicros = data['Time(s)'] * 1_000_000;
@@ -100,15 +106,11 @@ async function generateVideo(fileHandle, canvas, csvData) {
     // encode frames until time is reached
     while (true) {
       // render as fast as the encoder can handle (otherwise we'll OOM by generating too many frames)
-      while (encoder.encodeQueueSize > 30) {
+      while (encoder.encodeQueueSize > FPS) {
         await new Promise((resolve) => setTimeout(resolve, 10));
       }
 
       frameNumber++;
-
-      if (frameNumber % 100 === 0) {
-        this.postMessage({ type: 'progress', frameNumber });
-      }
 
       const frameTime = Math.round(frameNumber * frameDurationMicros);
       const frame = new VideoFrame(canvas, { timestamp: frameTime });
