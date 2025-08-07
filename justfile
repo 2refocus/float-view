@@ -36,6 +36,9 @@ checks:
 bump +type: checks
   npm version "{{ type }}" --message "v%s" --force
 
+renderer:
+  cd renderer && npm start
+
 _pre_commit_start:
   #!/usr/bin/env bash
   set -uo pipefail
