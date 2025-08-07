@@ -44,7 +44,7 @@
       const worker = new Worker('/worker.js');
       let complete = false;
       worker.addEventListener('message', (e) => {
-        if (e.data.type === 'log') {
+        if (e.data.type === 'log' && !complete) {
           outputPre.innerText += `LOG: ${e.data.message}\n`;
         }
         if (e.data.type === 'progress') {
