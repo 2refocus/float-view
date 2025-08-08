@@ -45,7 +45,7 @@
   });
 
   async function chooseOutputAndRender() {
-    const outputDirectoryHandle = await (window as any).showDirectoryPicker({
+    const outputDirectoryHandle = await window.showDirectoryPicker({
       id: 'output',
       mode: 'readwrite',
       startIn: 'videos',
