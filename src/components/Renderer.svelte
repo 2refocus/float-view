@@ -74,7 +74,7 @@
       devDemoCanvas.height = HEIGHT;
       const ctx = devDemoCanvas.getContext('2d');
       if (ctx) {
-        draw(devDemoCanvas, ctx, demoRows[0]!);
+        draw(devDemoCanvas, ctx, demoRows[50]!);
       }
     }
   });
