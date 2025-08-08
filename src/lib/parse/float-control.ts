@@ -6,7 +6,10 @@ import { RowKey, State, type Row, type RowWithIndex, Units } from './types';
 
 const transformHeader = (header: string) => {
   const key = floatControlKeyMap[header as FloatControlRawHeader];
-  if (!key) console.warn('Unknown header found in CSV file', { header });
+  if (!key && !Object.values(RowKey).includes(header as RowKey)) {
+    console.warn('Unknown header found in CSV file', { header });
+  }
+
   return key ?? header;
 };
 

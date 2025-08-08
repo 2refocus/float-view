@@ -1,15 +1,32 @@
-this.importScripts('/draw.js', '/webm-writer2.js', '/node_modules/papaparse/papaparse.min.js');
+import '../lib/webm-writer2.js';
+interface WebmWriter2Options {
+  fileWriter: FileSystemWritableFileStream;
+  codec: 'VP8' | 'VP9';
+  width: number;
+  height: number;
+  frameRate: number;
+}
+interface WebmWriter2Instance {
+  addFrame(chunk: EncodedVideoChunk): void;
+  complete(): Promise<void>;
+}
+declare var WebMWriter: {
+  new (options: WebmWriter2Options): WebmWriter2Instance;
+};
 
-this.addEventListener('message', (e) => {
+import { draw } from './Renderer.draw';
+import { FPS, WIDTH, HEIGHT, GAP_THRESHOLD_SECS } from './Renderer.common';
+import { RowKey, type RowWithIndex } from '../lib/parse/types.js';
+import { parse } from '../lib/parse/index.js';
+
+self.postMessage({ type: 'log', message: 'Renderer worker started.' });
+
+self.addEventListener('message', (e) => {
   if (e.data.type === 'start') {
-    this.postMessage({ type: 'log', message: 'Reading CSV...' });
-    Papa.parse(e.data.inputFile, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (results) => {
-        this.postMessage({ type: 'log', message: 'Finished reading CSV.' });
-        generateVideo(e.data.outputDirectoryHandle, e.data.canvas, results.data);
-      },
+    self.postMessage({ type: 'log', message: 'Reading input file...' });
+    parse(e.data.inputFile).then((result) => {
+      self.postMessage({ type: 'log', message: 'Finished reading input file.' });
+      generateVideo(e.data.outputDirectoryHandle, e.data.canvas, result.data);
     });
   }
 
@@ -19,59 +36,42 @@ this.addEventListener('message', (e) => {
 
   if (e.data.type === 'stop') {
     started = false;
-    this.postMessage({ type: 'log', message: 'Stopping video generation...' });
+    self.postMessage({ type: 'log', message: 'Stopping video generation...' });
   }
 });
-
-const FPS = 60;
-const WIDTH = 640;
-const HEIGHT = 480;
-const GAP_THRESHOLD_SECS = 60;
 
 let started = false;
 let totalFramesGenerated = 0;
 let totalFramesToGenerate = 0;
 
 function postUpdateMessage() {
-  this.postMessage({ type: 'log', message: `Frames rendered: ${totalFramesGenerated}` });
-  this.postMessage({ type: 'progress', totalFramesGenerated, totalFramesToGenerate });
+  self.postMessage({ type: 'log', message: `Frames rendered: ${totalFramesGenerated}` });
+  self.postMessage({ type: 'progress', totalFramesGenerated, totalFramesToGenerate });
 }
 
 class Video {
-  /**
-   * @param {any[]} csvData
-   */
-  constructor(csvData) {
+  constructor(public readonly csvData: RowWithIndex[]) {
     if (!Array.isArray(csvData) || csvData.length < 2) {
       throw new Error('Invalid CSV data provided');
     }
-
-    this.csvData = csvData;
   }
 
   frameCount() {
-    const startTime = this.csvData[0]['Time(s)'];
-    const endTime = this.csvData[this.csvData.length - 1]['Time(s)'];
+    const startTime = this.csvData[0]![RowKey.Time];
+    const endTime = this.csvData[this.csvData.length - 1]![RowKey.Time];
     const totalSeconds = endTime - startTime;
     return Math.round(totalSeconds * FPS);
   }
 
   startTime() {
-    return this.csvData[0]['Time(s)'];
+    return this.csvData[0]![RowKey.Time];
   }
 }
 
-/**
- *
- * @param {FileSystemDirectoryHandle} directoryHandle
- * @param {OffscreenCanvas} canvas
- * @param {number} index
- * @returns {Promise<{ name: string, fileWritableStream: FileSystemWritableFileStream, webmWriter: import('./webm-writer2.js') }>}
- */
-async function createFileHandle(directoryHandle, canvas, index) {
+async function createFileHandle(directoryHandle: FileSystemDirectoryHandle, canvas: OffscreenCanvas, index: number) {
   const name = `myVideo_${index + 1}.webm`;
   const fileHandle = await directoryHandle.getFileHandle(name, { create: true });
-  fileWritableStream = await fileHandle.createWritable();
+  const fileWritableStream = await fileHandle.createWritable();
 
   return {
     name,
@@ -86,31 +86,33 @@ async function createFileHandle(directoryHandle, canvas, index) {
   };
 }
 
-/**
- * @param {FileSystemDirectoryHandle} directoryHandle
- * @param {HTMLCanvasElement} canvas
- * @param {any[]} csvData
- */
-async function generateVideo(directoryHandle, canvas, csvData) {
-  this.postMessage({ type: 'log', message: 'Setting up canvas...' });
+async function generateVideo(
+  directoryHandle: FileSystemDirectoryHandle,
+  canvas: OffscreenCanvas,
+  csvData: RowWithIndex[],
+) {
+  self.postMessage({ type: 'log', message: 'Setting up canvas...' });
 
   canvas.width = WIDTH;
   canvas.height = HEIGHT;
 
-  /** @type {CanvasRenderingContext2D} */
   const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    self.postMessage({ type: 'fatal', message: 'Failed to get canvas context.' });
+    return;
+  }
 
   // split into segments
 
-  this.postMessage({ type: 'log', message: 'Scanning CSV for ride segments...' });
+  self.postMessage({ type: 'log', message: 'Scanning CSV for ride segments...' });
   const videos = [];
   let lastIndex = 0;
   for (let i = 0; i < csvData.length; i++) {
     const prev = csvData[i - 1];
-    const data = csvData[i];
-    if (prev && data['Time(s)'] - prev['Time(s)'] > GAP_THRESHOLD_SECS) {
+    const data = csvData[i]!;
+    if (prev && data[RowKey.Time] - prev[RowKey.Time] > GAP_THRESHOLD_SECS) {
       // if the time difference is more than 60 seconds, we assume a pause
-      this.postMessage({ type: 'log', message: `Detected pause at ${data['Time(s)']}s` });
+      self.postMessage({ type: 'log', message: `Detected pause at ${data[RowKey.Time]}s` });
       videos.push(new Video(csvData.slice(lastIndex, i)));
       lastIndex = i;
     }
@@ -119,11 +121,11 @@ async function generateVideo(directoryHandle, canvas, csvData) {
     videos.push(new Video(csvData.slice(lastIndex)));
   }
 
-  this.postMessage({ type: 'log', message: `Found ${videos.length} segments.` });
+  self.postMessage({ type: 'log', message: `Found ${videos.length} segments.` });
 
   // create encoder
 
-  this.postMessage({ type: 'log', message: 'Setting up encoder...' });
+  self.postMessage({ type: 'log', message: 'Setting up encoder...' });
 
   const encoderConfig = {
     codec: 'vp8',
@@ -135,24 +137,24 @@ async function generateVideo(directoryHandle, canvas, csvData) {
 
   const { supported } = await VideoEncoder.isConfigSupported(encoderConfig);
   if (!supported) {
-    this.postMessage({ type: 'fatal', message: 'VideoEncoder is not supported in this browser.' });
+    self.postMessage({ type: 'fatal', message: 'VideoEncoder is not supported in this browser.' });
     return;
   }
 
-  let currentWriter;
+  let currentWriter: Awaited<ReturnType<typeof createFileHandle>>;
   const encoder = new VideoEncoder({
     output: (chunk) => {
       currentWriter.webmWriter.addFrame(chunk);
     },
     error: (e) => {
-      this.postMessage({ type: 'log', message: `Encoder error: ${e.message}` });
+      self.postMessage({ type: 'log', message: `Encoder error: ${e.message}` });
     },
   });
   encoder.configure(encoderConfig);
 
   // render frames
 
-  this.postMessage({ type: 'log', message: 'Beginning render...' });
+  self.postMessage({ type: 'log', message: 'Beginning render...' });
 
   totalFramesGenerated = 0;
   totalFramesToGenerate = videos.reduce((sum, video) => sum + video.frameCount(), 0);
@@ -161,9 +163,9 @@ async function generateVideo(directoryHandle, canvas, csvData) {
 
   started = true;
   for (let i = 0; i < videos.length; i++) {
-    const video = videos[i];
+    const video = videos[i]!;
     currentWriter = await createFileHandle(directoryHandle, canvas, i);
-    this.postMessage({
+    self.postMessage({
       type: 'log',
       message: `Rendering segment ${i + 1} (${video.frameCount()} frames) into ${currentWriter.name}...`,
     });
@@ -171,8 +173,8 @@ async function generateVideo(directoryHandle, canvas, csvData) {
     let frameNumber = 0;
     const startTime = video.startTime();
     for (let j = 0; j < video.csvData.length; j++) {
-      const data = video.csvData[j];
-      const timeMicros = (data['Time(s)'] - startTime) * 1_000_000;
+      const data = video.csvData[j]!;
+      const timeMicros = (data[RowKey.Time] - startTime) * 1_000_000;
 
       // render frame
       draw(canvas, ctx, data);
@@ -210,11 +212,11 @@ async function generateVideo(directoryHandle, canvas, csvData) {
   encoder.close();
 
   const duration = performance.now() - start;
-  this.postMessage({
+  self.postMessage({
     type: 'log',
     message: `Rendered ${totalFramesGenerated} frames in ${(duration / 1_000 / 60).toFixed(2)} min(s)`,
   });
-  this.postMessage({ type: 'log', message: `Average frame time: ${(duration / totalFramesGenerated).toFixed(2)} ms` });
+  self.postMessage({ type: 'log', message: `Average frame time: ${(duration / totalFramesGenerated).toFixed(2)} ms` });
 
-  this.postMessage({ type: 'complete' });
+  self.postMessage({ type: 'complete' });
 }
