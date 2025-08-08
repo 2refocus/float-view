@@ -2,9 +2,16 @@ import { RowKey, type RowWithIndex } from '../lib/parse/types';
 
 type Ctx = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 
+// Font configuration - change this to update fonts throughout the renderer
+const FONT_FAMILY = 'Noto Sans, Arial, sans-serif';
+
+function getFont(size: number, weight: 'normal' | 'bold' = 'normal'): string {
+  return `${weight === 'bold' ? 'bold ' : ''}${size}px ${FONT_FAMILY}`;
+}
+
 export function draw(canvas: HTMLCanvasElement | OffscreenCanvas, ctx: Ctx, data: RowWithIndex) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#1a1a1a';
+  ctx.fillStyle = '#1e293b';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   const width = canvas.width;
@@ -133,14 +140,14 @@ function drawGauge(
   // Draw labels
   ctx.fillStyle = '#ffffff';
   ctx.textAlign = 'center';
-  ctx.font = `${Math.max(12, width * 0.04)}px Arial`;
+  ctx.font = getFont(Math.max(12, width * 0.04));
   ctx.fillText(label, centerX, y + height * 0.03);
 
-  ctx.font = `bold ${Math.max(16, width * 0.06)}px Arial`;
+  ctx.font = getFont(Math.max(16, width * 0.06), 'bold');
   ctx.fillText(`${valueStr} ${unit}`, centerX, centerY + radius * -0.2);
 
   // Draw min/max labels
-  ctx.font = `${Math.max(10, width * 0.025)}px Arial`;
+  ctx.font = getFont(Math.max(10, width * 0.025));
   ctx.fillStyle = '#cccccc';
   ctx.textAlign = 'left';
   ctx.fillText(minValue.toString(), centerX - radius * 0.5, centerY + radius * 0.7);
@@ -163,15 +170,19 @@ function drawValueBox(
   ctx.lineWidth = 2;
   ctx.strokeRect(x, y, width, height);
 
+  // Draw box background
+  ctx.fillStyle = '#2d3748';
+  ctx.fillRect(x, y, width, height);
+
   // Draw label
   ctx.fillStyle = '#cccccc';
   ctx.textAlign = 'center';
-  ctx.font = `${Math.max(10, width * 0.08)}px Arial`;
+  ctx.font = getFont(Math.max(10, width * 0.08));
   ctx.fillText(label, x + width / 2, y + height * 0.35);
 
   // Draw value
   ctx.fillStyle = '#ffffff';
-  ctx.font = `bold ${Math.max(14, width * 0.12)}px Arial`;
+  ctx.font = getFont(Math.max(14, width * 0.12), 'bold');
   const displayValue = Math.abs(value) < 0.1 ? value.toFixed(2) : value.toFixed(1);
   ctx.fillText(`${displayValue} ${unit}`, x + width / 2, y + height * 0.75);
 }

@@ -137,17 +137,20 @@ async function generateVideo(directoryHandle: FileSystemDirectoryHandle, canvas:
 
   self.postMessage({ type: 'log', message: 'Setting up encoder...' });
 
-  const encoderConfig = {
+  const encoderConfig: VideoEncoderConfig = {
     codec: 'vp8',
     width: canvas.width,
     height: canvas.height,
-    bitrate: 2_000_000, // 2 Mbps
+    bitrate: 2_000_000,
     framerate: FPS,
   };
 
   const { supported } = await VideoEncoder.isConfigSupported(encoderConfig);
   if (!supported) {
-    self.postMessage({ type: 'fatal', message: 'VideoEncoder is not supported in this browser.' });
+    self.postMessage({
+      type: 'fatal',
+      message: `The chosen options are not supported: ${JSON.stringify(encoderConfig, null, 2)}`,
+    });
     return;
   }
 

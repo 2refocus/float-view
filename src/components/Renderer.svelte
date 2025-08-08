@@ -38,6 +38,10 @@
         elOutput!.textContent += e.data.message + '\n';
         elOutput!.scrollTop = elOutput!.scrollHeight;
         return;
+      case 'fatal':
+        alert(`Error: ${e.data.message}`);
+        processing = false;
+        return;
       default:
         console.warn('Unknown message from worker', e.data);
         return;
@@ -84,8 +88,6 @@
     if (import.meta.env.DEV && elDevDemoCanvas) {
       elDevDemoCanvas.width = WIDTH;
       elDevDemoCanvas.height = HEIGHT;
-      elDevDemoCanvas.style.width = `${WIDTH}px`;
-      elDevDemoCanvas.style.height = `${HEIGHT}px`;
       const ctx = elDevDemoCanvas.getContext('2d');
       if (ctx) {
         draw(elDevDemoCanvas, ctx, demoRows[50]!);
@@ -106,6 +108,6 @@
 <div class="flex flex-row gap-2">
   <pre bind:this={elOutput} class="h-[640px] max-h-[640px] w-full grow overflow-y-auto border"></pre>
   {#if import.meta.env.DEV}
-    <canvas bind:this={elDevDemoCanvas} class="border"></canvas>
+    <canvas bind:this={elDevDemoCanvas} class="h-[640px] border"></canvas>
   {/if}
 </div>
