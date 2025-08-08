@@ -5,12 +5,14 @@
   import { draw } from './Renderer.draw';
   import Picker from './Picker.svelte';
   import Button from './Button.svelte';
+  import Input from './Input.svelte';
 
   let elDevDemoCanvas = $state<HTMLCanvasElement | null>(null);
   let elProgress = $state<HTMLProgressElement | null>(null);
   let elOutput = $state<HTMLPreElement | null>(null);
   let file = $state<File | undefined>(import.meta.env.DEV ? demoFile : undefined);
   let processing = $state(false);
+  let interpolate = $state(false);
 
   const createWorker = () => new Worker(new URL('./Renderer.worker.ts', import.meta.url), { type: 'module' });
   let worker = createWorker();
@@ -63,6 +65,7 @@
         type: 'start',
         outputDirectoryHandle,
         canvas: offscreen,
+        interpolate,
       },
       [offscreen],
     );
@@ -101,10 +104,19 @@
 </div>
 
 <Picker bind:file />
-<Button onclick={() => chooseOutputAndRender()}>choose output and render!</Button>
-<Button onclick={() => stop()}>cancel</Button>
-<Button onclick={() => clear()}>clear file</Button>
-<progress bind:this={elProgress}></progress>
+<div class="flex flex-col gap-2 p-4 justify-center">
+  <Input
+    class="w-1/2 m-auto"
+    id="interpolate"
+    type="checkbox"
+    bind:checked={interpolate}
+    label="Interpolate between data points (smooth transitions)"
+  />
+  <Button onclick={() => chooseOutputAndRender()}>choose output and render!</Button>
+  <Button onclick={() => stop()}>cancel</Button>
+  <Button onclick={() => clear()}>clear file</Button>
+  <progress bind:this={elProgress} class="w-full"></progress>
+</div>
 <div class="flex flex-row gap-2">
   <pre bind:this={elOutput} class="h-[640px] max-h-[640px] w-full grow overflow-y-auto border"></pre>
   {#if import.meta.env.DEV}
