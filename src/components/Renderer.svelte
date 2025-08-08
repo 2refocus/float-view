@@ -10,7 +10,7 @@
   let elProgress = $state<HTMLProgressElement | null>(null);
   let elOutput = $state<HTMLPreElement | null>(null);
   let file = $state<File | undefined>(import.meta.env.DEV ? demoFile : undefined);
-  let complete = $state(false);
+  let processing = $state(false);
 
   const createWorker = () => new Worker(new URL('./Renderer.worker.ts', import.meta.url), { type: 'module' });
   let worker = createWorker();
@@ -26,7 +26,7 @@
     switch (e.data.type) {
       case 'complete':
         elOutput!.textContent += `Finished rendering!\n`;
-        complete = true;
+        processing = false;
         return;
       case 'progress':
         if (elProgress) {
@@ -53,7 +53,7 @@
 
     const canvas = document.createElement('canvas');
     const offscreen = canvas.transferControlToOffscreen();
-    complete = false;
+    processing = true;
     worker.postMessage(
       {
         type: 'start',
@@ -63,7 +63,7 @@
       [offscreen],
     );
 
-    while (!complete) {
+    while (processing) {
       await new Promise((resolve) => setTimeout(resolve, 500));
       worker.postMessage({ type: 'update' });
     }
@@ -72,7 +72,7 @@
   function stop() {
     worker.postMessage({ type: 'stop' });
     elOutput!.textContent += `Cancelled!\n`;
-    complete = true;
+    processing = false;
   }
 
   function clear() {
@@ -84,6 +84,8 @@
     if (import.meta.env.DEV && elDevDemoCanvas) {
       elDevDemoCanvas.width = WIDTH;
       elDevDemoCanvas.height = HEIGHT;
+      elDevDemoCanvas.style.width = `${WIDTH}px`;
+      elDevDemoCanvas.style.height = `${HEIGHT}px`;
       const ctx = elDevDemoCanvas.getContext('2d');
       if (ctx) {
         draw(elDevDemoCanvas, ctx, demoRows[50]!);
@@ -92,14 +94,18 @@
   });
 </script>
 
+<div>
+  <p>Please note, this currently only works in chromium-based browsers since it uses the File System Access API.</p>
+</div>
+
 <Picker bind:file />
 <Button onclick={() => chooseOutputAndRender()}>choose output and render!</Button>
 <Button onclick={() => stop()}>cancel</Button>
 <Button onclick={() => clear()}>clear file</Button>
 <progress bind:this={elProgress}></progress>
-<div class="flex flex-row gap-2 justify-center">
-  <pre bind:this={elOutput} class="h-[500px] w-full grow overflow-y-scroll border"></pre>
+<div class="flex flex-row gap-2">
+  <pre bind:this={elOutput} class="h-[640px] max-h-[640px] w-full grow overflow-y-auto border"></pre>
   {#if import.meta.env.DEV}
-    <canvas bind:this={elDevDemoCanvas}></canvas>
+    <canvas bind:this={elDevDemoCanvas} class="border"></canvas>
   {/if}
 </div>
