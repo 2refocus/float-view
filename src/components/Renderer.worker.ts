@@ -104,7 +104,7 @@ class Video {
 }
 
 async function createFileHandle(directoryHandle: FileSystemDirectoryHandle, canvas: OffscreenCanvas, index: number) {
-  const name = `myVideo_${index + 1}.webm`;
+  const name = `floatViewRender_${index + 1}.webm`;
   const fileHandle = await directoryHandle.getFileHandle(name, { create: true });
   const fileWritableStream = await fileHandle.createWritable();
 
