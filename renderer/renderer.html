@@ -26,13 +26,18 @@
         height: 60vh;
         overflow-y: scroll;
       }
+
+      progress {
+        width: 100%;
+      }
     </style>
   </head>
   <body>
     <input type="file" id="fileInput" accept=".csv" />
     <button onclick="main().catch(console.error)">render</button>
-    <progress id="progress"></progress>
+    <button onclick="stop()">cancel</button>
     <pre id="output"></pre>
+    <progress value="0" max="1" id="progress"></progress>
     <script>
       /** @type {HTMLInputElement} */
       const fileInput = document.getElementById('fileInput');
@@ -44,19 +49,31 @@
       const worker = new Worker('/worker.js');
       let complete = false;
       worker.addEventListener('message', (e) => {
+        if (e.data.type === 'fatal') {
+          alert(`Fatal error: ${e.data.message}`);
+          complete = true;
+        }
         if (e.data.type === 'log' && !complete) {
           outputPre.innerText += `LOG: ${e.data.message}\n`;
         }
-        if (e.data.type === 'progress') {
-          outputPre.innerText += `Rendered ${e.data.frameNumber} frames\n`;
+        if (e.data.type === 'progress' && !complete) {
+          progress.max = e.data.totalFramesToGenerate;
+          progress.value = e.data.totalFramesGenerated;
         }
         if (e.data.type === 'complete') {
           complete = true;
+          progress.value = progress.max;
           outputPre.innerText += `Complete!\n`;
         }
 
         outputPre.scrollTop = outputPre.scrollHeight;
       });
+
+      function stop() {
+        worker.postMessage({ type: 'stop' });
+        outputPre.innerText += `Cancelled!\n`;
+        complete = true;
+      }
 
       async function main() {
         if (fileInput.files.length === 0) {
@@ -64,15 +81,10 @@
           return;
         }
 
-        const outputFileHandle = await window.showSaveFilePicker({
+        const outputDirectoryHandle = await window.showDirectoryPicker({
+          id: 'output',
+          mode: 'readwrite',
           startIn: 'videos',
-          suggestedName: 'myVideo.webm',
-          types: [
-            {
-              description: 'Video File',
-              accept: { 'video/webm': ['.webm'] },
-            },
-          ],
         });
 
         const canvas = document.createElement('canvas');
@@ -82,15 +94,14 @@
           {
             type: 'start',
             inputFile: fileInput.files[0],
-            outputFileHandle,
+            outputDirectoryHandle,
             canvas: offscreen,
           },
           [offscreen],
         );
 
         while (!complete) {
-          console.log('update');
-          await new Promise((resolve) => setTimeout(resolve, 1000));
+          await new Promise((resolve) => setTimeout(resolve, 500));
           worker.postMessage({ type: 'update' });
         }
       }
