@@ -6,9 +6,9 @@ import { mount } from 'svelte';
 
 const target = document.getElementById('app')!;
 
-if (window.location.pathname.endsWith('/renderer')) {
+if (window.location.hash === '#renderer') {
   mount(Renderer, { target });
-} else if (window.location.pathname.endsWith('/player')) {
+} else if (window.location.hash === '#player') {
   mount(Player, { target });
 } else {
   mount(App, { target });

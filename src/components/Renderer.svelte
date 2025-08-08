@@ -100,6 +100,7 @@
 </script>
 
 <div>
+  <p>Currently experimental and probably doesn't work!</p>
   <p>Please note, this currently only works in chromium-based browsers since it uses the File System Access API.</p>
 </div>
 
