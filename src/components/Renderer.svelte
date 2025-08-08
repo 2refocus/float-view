@@ -24,17 +24,18 @@
     }
   });
 
+  let pendingUpdate = false;
   worker.addEventListener('message', (e) => {
     switch (e.data.type) {
       case 'complete':
+        elProgress!.value = elProgress!.max;
         elOutput!.textContent += `Finished rendering!\n`;
         processing = false;
         return;
       case 'progress':
-        if (elProgress) {
-          elProgress.max = e.data.totalFramesToGenerate;
-          elProgress.value = e.data.totalFramesGenerated;
-        }
+        pendingUpdate = false;
+        elProgress!.max = e.data.totalFramesToGenerate;
+        elProgress!.value = e.data.totalFramesGenerated;
         return;
       case 'log':
         elOutput!.textContent += e.data.message + '\n';
@@ -70,9 +71,10 @@
       [offscreen],
     );
 
-    while (processing) {
+    while (!pendingUpdate && processing) {
       await new Promise((resolve) => setTimeout(resolve, 500));
       worker.postMessage({ type: 'update' });
+      pendingUpdate = true;
     }
   }
 
