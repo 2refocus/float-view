@@ -1,4 +1,4 @@
-this.importScripts('/webm-writer2.js', '/node_modules/papaparse/papaparse.min.js');
+this.importScripts('/draw.js', '/webm-writer2.js', '/node_modules/papaparse/papaparse.min.js');
 
 this.addEventListener('message', (e) => {
   if (e.data.type === 'start') {
@@ -100,15 +100,6 @@ async function generateVideo(directoryHandle, canvas, csvData) {
   /** @type {CanvasRenderingContext2D} */
   const ctx = canvas.getContext('2d');
 
-  function draw(data) {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = 'black';
-    ctx.font = '20px Arial';
-    ctx.fillText(`Speed: ${data['Speed(km/h)']} km/h`, 10, 50);
-  }
-
   // split into segments
 
   this.postMessage({ type: 'log', message: 'Scanning CSV for ride segments...' });
@@ -184,7 +175,7 @@ async function generateVideo(directoryHandle, canvas, csvData) {
       const timeMicros = (data['Time(s)'] - startTime) * 1_000_000;
 
       // render frame
-      draw(data);
+      draw(canvas, ctx, data);
 
       // encode frames until time is reached
       while (true) {
