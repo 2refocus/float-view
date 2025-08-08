@@ -6,29 +6,37 @@
   import Picker from './Picker.svelte';
   import Button from './Button.svelte';
 
-  let devDemoCanvas = $state<HTMLCanvasElement | null>(null);
-  let progress = $state<HTMLProgressElement | null>(null);
+  let elDevDemoCanvas = $state<HTMLCanvasElement | null>(null);
+  let elProgress = $state<HTMLProgressElement | null>(null);
+  let elOutput = $state<HTMLPreElement | null>(null);
   let file = $state<File | undefined>(import.meta.env.DEV ? demoFile : undefined);
-  let output = $state('');
   let complete = $state(false);
 
   const createWorker = () => new Worker(new URL('./Renderer.worker.ts', import.meta.url), { type: 'module' });
   let worker = createWorker();
 
+  // when file changes, send it to the worker
+  $effect(() => {
+    if (file) {
+      worker.postMessage({ type: 'file', inputFile: file });
+    }
+  });
+
   worker.addEventListener('message', (e) => {
     switch (e.data.type) {
       case 'complete':
-        output += `Finished rendering!\n`;
+        elOutput!.textContent += `Finished rendering!\n`;
         complete = true;
         return;
       case 'progress':
-        if (progress) {
-          progress.max = e.data.totalFramesToGenerate;
-          progress.value = e.data.totalFramesGenerated;
+        if (elProgress) {
+          elProgress.max = e.data.totalFramesToGenerate;
+          elProgress.value = e.data.totalFramesGenerated;
         }
         return;
       case 'log':
-        output += e.data.message + '\n';
+        elOutput!.textContent += e.data.message + '\n';
+        elOutput!.scrollTop = elOutput!.scrollHeight;
         return;
       default:
         console.warn('Unknown message from worker', e.data);
@@ -49,7 +57,6 @@
     worker.postMessage(
       {
         type: 'start',
-        inputFile: file,
         outputDirectoryHandle,
         canvas: offscreen,
       },
@@ -64,28 +71,35 @@
 
   function stop() {
     worker.postMessage({ type: 'stop' });
-    output += `Cancelled!\n`;
+    elOutput!.textContent += `Cancelled!\n`;
     complete = true;
   }
 
+  function clear() {
+    elOutput!.textContent = '';
+    file = undefined;
+  }
+
   onMount(() => {
-    if (import.meta.env.DEV && devDemoCanvas) {
-      devDemoCanvas.width = WIDTH;
-      devDemoCanvas.height = HEIGHT;
-      const ctx = devDemoCanvas.getContext('2d');
+    if (import.meta.env.DEV && elDevDemoCanvas) {
+      elDevDemoCanvas.width = WIDTH;
+      elDevDemoCanvas.height = HEIGHT;
+      const ctx = elDevDemoCanvas.getContext('2d');
       if (ctx) {
-        draw(devDemoCanvas, ctx, demoRows[50]!);
+        draw(elDevDemoCanvas, ctx, demoRows[50]!);
       }
     }
   });
 </script>
 
-{#if import.meta.env.DEV}
-  <canvas bind:this={devDemoCanvas}></canvas>
-{/if}
-
 <Picker bind:file />
 <Button onclick={() => chooseOutputAndRender()}>choose output and render!</Button>
 <Button onclick={() => stop()}>cancel</Button>
-<progress bind:this={progress}></progress>
-<pre>{output}</pre>
+<Button onclick={() => clear()}>clear file</Button>
+<progress bind:this={elProgress}></progress>
+<div class="flex flex-row gap-2 justify-center">
+  <pre bind:this={elOutput} class="h-[500px] w-full grow overflow-y-scroll border"></pre>
+  {#if import.meta.env.DEV}
+    <canvas bind:this={elDevDemoCanvas}></canvas>
+  {/if}
+</div>

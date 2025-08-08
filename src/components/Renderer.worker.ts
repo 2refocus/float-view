@@ -21,13 +21,52 @@ import { parse } from '../lib/parse/index.js';
 
 self.postMessage({ type: 'log', message: 'Renderer worker started.' });
 
+let started = false;
+let totalFramesGenerated = 0;
+let totalFramesToGenerate = 0;
+let videos: Video[] = [];
+
 self.addEventListener('message', (e) => {
-  if (e.data.type === 'start') {
+  if (e.data.type === 'file') {
     self.postMessage({ type: 'log', message: 'Reading input file...' });
     parse(e.data.inputFile).then((result) => {
       self.postMessage({ type: 'log', message: 'Finished reading input file.' });
-      generateVideo(e.data.outputDirectoryHandle, e.data.canvas, result.data);
+
+      // split into segments
+
+      videos.length = 0;
+
+      self.postMessage({ type: 'log', message: 'Scanning CSV for ride segments...' });
+      let lastIndex = 0;
+      for (let i = 0; i < result.data.length; i++) {
+        const prev = result.data[i - 1];
+        const data = result.data[i]!;
+        // if the time difference is more than 60 seconds, we assume a pause
+        if (prev && data[RowKey.Time] - prev[RowKey.Time] > GAP_THRESHOLD_SECS) {
+          const slice = result.data.slice(lastIndex, i);
+          if (slice.length > 1) {
+            self.postMessage({ type: 'log', message: `Detected pause at ${data[RowKey.Time]}s` });
+            videos.push(new Video(slice));
+          }
+          lastIndex = i;
+        }
+      }
+
+      if (lastIndex < result.data.length) {
+        videos.push(new Video(result.data.slice(lastIndex)));
+      }
+
+      self.postMessage({ type: 'log', message: `Found ${videos.length} segments.` });
     });
+  }
+
+  if (e.data.type === 'start') {
+    self.postMessage({ type: 'log', message: 'Reading input file...' });
+    if (!videos || videos.length === 0) {
+      self.postMessage({ type: 'log', message: 'Error: no data available to render, please load a file.' });
+    } else {
+      generateVideo(e.data.outputDirectoryHandle, e.data.canvas);
+    }
   }
 
   if (e.data.type === 'update') {
@@ -39,10 +78,6 @@ self.addEventListener('message', (e) => {
     self.postMessage({ type: 'log', message: 'Stopping video generation...' });
   }
 });
-
-let started = false;
-let totalFramesGenerated = 0;
-let totalFramesToGenerate = 0;
 
 function postUpdateMessage() {
   self.postMessage({ type: 'log', message: `Frames rendered: ${totalFramesGenerated}` });
@@ -86,11 +121,7 @@ async function createFileHandle(directoryHandle: FileSystemDirectoryHandle, canv
   };
 }
 
-async function generateVideo(
-  directoryHandle: FileSystemDirectoryHandle,
-  canvas: OffscreenCanvas,
-  csvData: RowWithIndex[],
-) {
+async function generateVideo(directoryHandle: FileSystemDirectoryHandle, canvas: OffscreenCanvas) {
   self.postMessage({ type: 'log', message: 'Setting up canvas...' });
 
   canvas.width = WIDTH;
@@ -101,27 +132,6 @@ async function generateVideo(
     self.postMessage({ type: 'fatal', message: 'Failed to get canvas context.' });
     return;
   }
-
-  // split into segments
-
-  self.postMessage({ type: 'log', message: 'Scanning CSV for ride segments...' });
-  const videos = [];
-  let lastIndex = 0;
-  for (let i = 0; i < csvData.length; i++) {
-    const prev = csvData[i - 1];
-    const data = csvData[i]!;
-    if (prev && data[RowKey.Time] - prev[RowKey.Time] > GAP_THRESHOLD_SECS) {
-      // if the time difference is more than 60 seconds, we assume a pause
-      self.postMessage({ type: 'log', message: `Detected pause at ${data[RowKey.Time]}s` });
-      videos.push(new Video(csvData.slice(lastIndex, i)));
-      lastIndex = i;
-    }
-  }
-  if (lastIndex < csvData.length) {
-    videos.push(new Video(csvData.slice(lastIndex)));
-  }
-
-  self.postMessage({ type: 'log', message: `Found ${videos.length} segments.` });
 
   // create encoder
 
