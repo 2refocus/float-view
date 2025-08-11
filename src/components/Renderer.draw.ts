@@ -2,8 +2,22 @@ import { RowKey, type RowWithIndex } from '../lib/parse/types';
 
 type Ctx = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 
-// Font configuration - change this to update fonts throughout the renderer
 const FONT_FAMILY = 'Noto Sans, Arial, sans-serif';
+
+interface ValueBoxConfig {
+  label: string;
+  dataKey: RowKey;
+  unit: string;
+}
+
+const VALUE_BOX_CONFIGS: ValueBoxConfig[] = [
+  { label: 'Bat V', dataKey: RowKey.Voltage, unit: 'V' },
+  { label: 'Current Bat', dataKey: RowKey.CurrentBattery, unit: 'A' },
+  { label: 'Current Motor', dataKey: RowKey.CurrentMotor, unit: 'A' },
+  { label: 'Temp MOSFET', dataKey: RowKey.TempMosfet, unit: '°C' },
+  { label: 'Temp Motor', dataKey: RowKey.TempMotor, unit: '°C' },
+  { label: 'Temp Battery', dataKey: RowKey.TempBattery, unit: '°C' },
+];
 
 function getFont(size: number, weight: 'normal' | 'bold' = 'normal'): string {
   return `${weight === 'bold' ? 'bold ' : ''}${size}px ${FONT_FAMILY}`;
@@ -19,82 +33,89 @@ export function draw(canvas: HTMLCanvasElement | OffscreenCanvas, ctx: Ctx, data
   const padding = width * 0.025;
 
   // Calculate layout dimensions
-  const gaugeHeight = height * 0.45;
+  const gaugeHeight = height * 0.4;
   const valueBoxHeight = height * 0.1;
-  const valueBoxWidth = (width - 4 * padding) / 3; // Three boxes with padding
+
+  // Grid layout for value boxes: 3 columns, 2 rows
+  const columns = 3;
+  const rows = Math.ceil(VALUE_BOX_CONFIGS.length / columns);
+  const valueBoxWidth = (width - (columns + 1) * padding) / columns;
+  const totalValueBoxesHeight = rows * valueBoxHeight + (rows - 1) * padding;
+
+  const gaugeWidth = width * 0.5 - 2 * padding;
 
   // Draw speed gauge
-  drawGauge(
+  drawGauge({
+    label: 'Speed',
     ctx,
-    padding,
-    padding,
-    width - 2 * padding,
-    gaugeHeight,
-    data[RowKey.Speed],
-    data[RowKey.Speed].toFixed(1),
-    'Speed',
-    'km/h',
-    0,
-    50,
-  );
+    x: padding,
+    y: padding,
+    width: gaugeWidth,
+    height: gaugeHeight,
+    value: data[RowKey.Speed],
+    valueStr: data[RowKey.Speed].toFixed(1),
+    unit: 'km/h',
+    minValue: 0,
+    maxValue: 50,
+  });
 
   // Draw duty cycle gauge
-  drawGauge(
+  drawGauge({
+    label: 'Duty Cycle',
     ctx,
-    padding,
-    padding + gaugeHeight + padding,
-    width - 2 * padding,
-    gaugeHeight,
-    Math.abs(data[RowKey.Duty]),
-    Math.abs(data[RowKey.Duty]).toFixed(0),
-    'Duty Cycle',
-    '%',
-    0,
-    100,
-  );
+    x: padding + width * 0.5,
+    y: padding,
+    width: gaugeWidth,
+    height: gaugeHeight,
+    value: Math.abs(data[RowKey.Duty]),
+    valueStr: Math.abs(data[RowKey.Duty]).toFixed(0),
+    unit: '%',
+    minValue: 0,
+    maxValue: 100,
+  });
 
-  // Calculate y position for value boxes
-  const valueBoxY = height - valueBoxHeight - padding;
+  // Calculate y position for value boxes grid
+  const valueBoxGridY = height - totalValueBoxesHeight - padding;
 
-  // Draw value boxes
-  drawValueBox(ctx, padding, valueBoxY, valueBoxWidth, valueBoxHeight, data[RowKey.Voltage], 'Bat V', 'V');
+  // Draw value boxes in a grid
+  VALUE_BOX_CONFIGS.forEach((config, index) => {
+    const row = Math.floor(index / columns);
+    const col = index % columns;
 
-  drawValueBox(
-    ctx,
-    padding + valueBoxWidth + padding,
-    valueBoxY,
-    valueBoxWidth,
-    valueBoxHeight,
-    data[RowKey.CurrentBattery],
-    'Current Bat',
-    'A',
-  );
+    const x = padding + col * (valueBoxWidth + padding);
+    const y = valueBoxGridY + row * (valueBoxHeight + padding);
 
-  drawValueBox(
-    ctx,
-    padding + 2 * (valueBoxWidth + padding),
-    valueBoxY,
-    valueBoxWidth,
-    valueBoxHeight,
-    data[RowKey.CurrentMotor],
-    'Current Motor',
-    'A',
-  );
+    const value = data[config.dataKey];
+    const numericValue = typeof value === 'number' ? value : 0;
+
+    drawValueBox({
+      label: config.label,
+      ctx,
+      x,
+      y,
+      width: valueBoxWidth,
+      height: valueBoxHeight,
+      value: numericValue,
+      unit: config.unit,
+    });
+  });
 }
 
-function drawGauge(
-  ctx: Ctx,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  value: number,
-  valueStr: string,
-  label: string,
-  unit: string,
-  minValue: number,
-  maxValue: number,
-) {
+interface GaugeParams {
+  label: string;
+  ctx: Ctx;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  value: number;
+  valueStr: string;
+  unit: string;
+  minValue: number;
+  maxValue: number;
+}
+
+function drawGauge({ label, ctx, x, y, width, height, value, valueStr, unit, minValue, maxValue }: GaugeParams) {
   const centerX = x + width / 2;
   const centerY = y + height * 0.45; // Position gauge arc in lower part of area
   const radius = Math.min(width, height) * 0.35;
@@ -140,14 +161,14 @@ function drawGauge(
   // Draw labels
   ctx.fillStyle = '#ffffff';
   ctx.textAlign = 'center';
-  ctx.font = getFont(Math.max(12, width * 0.04));
-  ctx.fillText(label, centerX, y + height * 0.03);
+  ctx.font = getFont(Math.max(12, width * 0.08));
+  ctx.fillText(label, centerX, y + height * 0.08);
 
   ctx.font = getFont(Math.max(16, width * 0.06), 'bold');
   ctx.fillText(`${valueStr} ${unit}`, centerX, centerY + radius * -0.2);
 
   // Draw min/max labels
-  ctx.font = getFont(Math.max(10, width * 0.025));
+  ctx.font = getFont(Math.max(10, width * 0.075));
   ctx.fillStyle = '#cccccc';
   ctx.textAlign = 'left';
   ctx.fillText(minValue.toString(), centerX - radius * 0.5, centerY + radius * 0.7);
@@ -155,16 +176,18 @@ function drawGauge(
   ctx.fillText(maxValue.toString(), centerX + radius * 0.5, centerY + radius * 0.7);
 }
 
-function drawValueBox(
-  ctx: Ctx,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  value: number,
-  label: string,
-  unit: string,
-) {
+interface ValueBoxParams {
+  label: string;
+  ctx: Ctx;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  value: number;
+  unit: string;
+}
+
+function drawValueBox({ label, ctx, x, y, width, height, value, unit }: ValueBoxParams) {
   // Draw box border
   ctx.strokeStyle = '#666666';
   ctx.lineWidth = 2;
