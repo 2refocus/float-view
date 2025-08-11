@@ -1,8 +1,8 @@
 import { RowKey, type RowWithIndex } from '../lib/parse/types';
-
-type Ctx = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+import type { Canvas, Ctx } from './Renderer.utils';
 
 const FONT_FAMILY = 'Noto Sans, Arial, sans-serif';
+const BG_COLOUR = '#1e293b';
 
 interface ValueBoxConfig {
   label: string;
@@ -23,9 +23,16 @@ function getFont(size: number, weight: 'normal' | 'bold' = 'normal'): string {
   return `${weight === 'bold' ? 'bold ' : ''}${size}px ${FONT_FAMILY}`;
 }
 
-export function draw(canvas: HTMLCanvasElement | OffscreenCanvas, ctx: Ctx, data: RowWithIndex) {
+export interface DrawParams {
+  canvas: Canvas;
+  ctx: Ctx;
+  data: RowWithIndex;
+  images: Record<string, ImageBitmap>;
+}
+
+export function draw({ canvas, ctx, data, images }: DrawParams) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#1e293b';
+  ctx.fillStyle = BG_COLOUR;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   const width = canvas.width;
@@ -33,25 +40,20 @@ export function draw(canvas: HTMLCanvasElement | OffscreenCanvas, ctx: Ctx, data
   const padding = width * 0.025;
 
   // Calculate layout dimensions
-  const gaugeHeight = height * 0.4;
+  const gaugeHeight = height * 0.3;
   const valueBoxHeight = height * 0.1;
-
-  // Grid layout for value boxes: 3 columns, 2 rows
-  const columns = 3;
-  const rows = Math.ceil(VALUE_BOX_CONFIGS.length / columns);
-  const valueBoxWidth = (width - (columns + 1) * padding) / columns;
-  const totalValueBoxesHeight = rows * valueBoxHeight + (rows - 1) * padding;
 
   const gaugeWidth = width * 0.5 - 2 * padding;
 
   // Draw speed gauge
   drawGauge({
+    canvas,
     label: 'Speed',
     ctx,
     x: padding,
     y: padding,
-    width: gaugeWidth,
-    height: gaugeHeight,
+    w: gaugeWidth,
+    h: gaugeHeight,
     value: data[RowKey.Speed],
     valueStr: data[RowKey.Speed].toFixed(1),
     unit: 'km/h',
@@ -61,18 +63,38 @@ export function draw(canvas: HTMLCanvasElement | OffscreenCanvas, ctx: Ctx, data
 
   // Draw duty cycle gauge
   drawGauge({
+    canvas,
     label: 'Duty Cycle',
     ctx,
     x: padding + width * 0.5,
     y: padding,
-    width: gaugeWidth,
-    height: gaugeHeight,
+    w: gaugeWidth,
+    h: gaugeHeight,
     value: Math.abs(data[RowKey.Duty]),
     valueStr: Math.abs(data[RowKey.Duty]).toFixed(0),
     unit: '%',
     minValue: 0,
     maxValue: 100,
   });
+
+  // Pitch
+  drawPitch({
+    canvas,
+    ctx,
+    x: padding,
+    y: padding + gaugeHeight,
+    w: gaugeWidth,
+    h: gaugeHeight,
+    pitch: data[RowKey.Pitch],
+    setpoint: data[RowKey.Setpoint] ?? 0,
+    image: images['pitch']!,
+  });
+
+  // Grid layout for value boxes: 3 columns, 2 rows
+  const columns = 3;
+  const rows = Math.ceil(VALUE_BOX_CONFIGS.length / columns);
+  const valueBoxWidth = (width - (columns + 1) * padding) / columns;
+  const totalValueBoxesHeight = rows * valueBoxHeight + (rows - 1) * padding;
 
   // Calculate y position for value boxes grid
   const valueBoxGridY = height - totalValueBoxesHeight - padding;
@@ -90,24 +112,74 @@ export function draw(canvas: HTMLCanvasElement | OffscreenCanvas, ctx: Ctx, data
 
     drawValueBox({
       label: config.label,
+      canvas,
       ctx,
       x,
       y,
-      width: valueBoxWidth,
-      height: valueBoxHeight,
+      w: valueBoxWidth,
+      h: valueBoxHeight,
       value: numericValue,
       unit: config.unit,
     });
   });
 }
 
-interface GaugeParams {
-  label: string;
+interface BaseParams {
+  canvas: Canvas;
   ctx: Ctx;
   x: number;
   y: number;
-  width: number;
-  height: number;
+  w: number;
+  h: number;
+}
+
+interface PitchParams extends BaseParams {
+  pitch: number;
+  setpoint: number;
+  image: ImageBitmap;
+}
+
+function drawPitch({ ctx, x, y, w, h, pitch, setpoint, image }: PitchParams) {
+  const centerX = x + w * 0.5;
+  const centerY = y + h * 0.5;
+  const imageSize = Math.max(w, h);
+
+  // setpoint indicators
+  ctx.save();
+  ctx.translate(centerX, centerY);
+  ctx.rotate((setpoint * Math.PI) / 180);
+
+  ctx.strokeStyle = '#00ffff';
+  ctx.beginPath();
+  ctx.moveTo(x + w * 0.1 - centerX, 0);
+  ctx.lineTo(x + w * 0.3 - centerX, 0);
+  ctx.moveTo(x + w * 0.7 - centerX, 0);
+  ctx.lineTo(x + w * 0.9 - centerX, 0);
+  ctx.stroke();
+  ctx.restore();
+
+  // pitch visualisation
+  ctx.save();
+  ctx.translate(centerX, centerY);
+  ctx.rotate((pitch * Math.PI) / 180);
+  ctx.drawImage(image, -imageSize * 0.5, -imageSize * 0.5, imageSize, imageSize);
+  ctx.restore();
+
+  // data labels
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'left';
+  ctx.font = getFont(w * 0.07);
+
+  ctx.fillText(`Pitch:`, x, y + h * 0.84);
+  ctx.fillText(`Setpoint:`, x, y + h * 0.92);
+
+  ctx.textAlign = 'right';
+  ctx.fillText(`${pitch.toFixed(1)}°`, x + w, y + h * 0.84);
+  ctx.fillText(`${setpoint.toFixed(1)}°`, x + w, y + h * 0.92);
+}
+
+interface GaugeParams extends BaseParams {
+  label: string;
   value: number;
   valueStr: string;
   unit: string;
@@ -115,10 +187,10 @@ interface GaugeParams {
   maxValue: number;
 }
 
-function drawGauge({ label, ctx, x, y, width, height, value, valueStr, unit, minValue, maxValue }: GaugeParams) {
-  const centerX = x + width / 2;
-  const centerY = y + height * 0.45; // Position gauge arc in lower part of area
-  const radius = Math.min(width, height) * 0.35;
+function drawGauge({ label, ctx, x, y, w, h, value, valueStr, unit, minValue, maxValue }: GaugeParams) {
+  const centerX = x + w / 2;
+  const centerY = y + h * 0.6; // Position gauge arc in lower part of area
+  const radius = Math.min(w, h) * 0.4;
   const startAngle = Math.PI * 0.75; // Start at 135 degrees
   const endAngle = Math.PI * 0.25; // End at 45 degrees
   const angleRange = endAngle - startAngle + 2 * Math.PI;
@@ -157,18 +229,19 @@ function drawGauge({ label, ctx, x, y, width, height, value, valueStr, unit, min
   ctx.beginPath();
   ctx.arc(centerX, centerY, radius * 0.05, 0, 2 * Math.PI);
   ctx.fill();
+  ctx.stroke();
 
   // Draw labels
   ctx.fillStyle = '#ffffff';
   ctx.textAlign = 'center';
-  ctx.font = getFont(Math.max(12, width * 0.08));
-  ctx.fillText(label, centerX, y + height * 0.08);
+  ctx.font = getFont(Math.max(12, w * 0.08));
+  ctx.fillText(label, centerX, y + h * 0.08);
 
-  ctx.font = getFont(Math.max(16, width * 0.06), 'bold');
+  ctx.font = getFont(Math.max(16, w * 0.06), 'bold');
   ctx.fillText(`${valueStr} ${unit}`, centerX, centerY + radius * -0.2);
 
   // Draw min/max labels
-  ctx.font = getFont(Math.max(10, width * 0.075));
+  ctx.font = getFont(Math.max(10, w * 0.075));
   ctx.fillStyle = '#cccccc';
   ctx.textAlign = 'left';
   ctx.fillText(minValue.toString(), centerX - radius * 0.5, centerY + radius * 0.7);
@@ -176,36 +249,31 @@ function drawGauge({ label, ctx, x, y, width, height, value, valueStr, unit, min
   ctx.fillText(maxValue.toString(), centerX + radius * 0.5, centerY + radius * 0.7);
 }
 
-interface ValueBoxParams {
+interface ValueBoxParams extends BaseParams {
   label: string;
-  ctx: Ctx;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
   value: number;
   unit: string;
 }
 
-function drawValueBox({ label, ctx, x, y, width, height, value, unit }: ValueBoxParams) {
+function drawValueBox({ label, ctx, x, y, w, h, value, unit }: ValueBoxParams) {
   // Draw box border
   ctx.strokeStyle = '#666666';
   ctx.lineWidth = 2;
-  ctx.strokeRect(x, y, width, height);
+  ctx.strokeRect(x, y, w, h);
 
   // Draw box background
   ctx.fillStyle = '#2d3748';
-  ctx.fillRect(x, y, width, height);
+  ctx.fillRect(x, y, w, h);
 
   // Draw label
   ctx.fillStyle = '#cccccc';
   ctx.textAlign = 'center';
-  ctx.font = getFont(Math.max(10, width * 0.08));
-  ctx.fillText(label, x + width / 2, y + height * 0.35);
+  ctx.font = getFont(Math.max(10, w * 0.08));
+  ctx.fillText(label, x + w / 2, y + h * 0.35);
 
   // Draw value
   ctx.fillStyle = '#ffffff';
-  ctx.font = getFont(Math.max(14, width * 0.12), 'bold');
+  ctx.font = getFont(Math.max(14, w * 0.12), 'bold');
   const displayValue = Math.abs(value) < 0.1 ? value.toFixed(2) : value.toFixed(1);
-  ctx.fillText(`${displayValue} ${unit}`, x + width / 2, y + height * 0.75);
+  ctx.fillText(`${displayValue} ${unit}`, x + w / 2, y + h * 0.75);
 }

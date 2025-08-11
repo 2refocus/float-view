@@ -2,10 +2,10 @@
   import { onMount } from 'svelte';
   import { HEIGHT, WIDTH } from './Renderer.common';
   import { demoFile, demoRows } from '../lib/parse/float-control';
-  import { draw } from './Renderer.draw';
   import Picker from './Picker.svelte';
   import Button from './Button.svelte';
   import Input from './Input.svelte';
+  import { RasterImage } from './Renderer.utils';
 
   let elDevDemoCanvas = $state<HTMLCanvasElement | null>(null);
   let elProgress = $state<HTMLProgressElement | null>(null);
@@ -58,17 +58,18 @@
       startIn: 'videos',
     });
 
-    const canvas = document.createElement('canvas');
-    const offscreen = canvas.transferControlToOffscreen();
+    const canvas = document.createElement('canvas').transferControlToOffscreen();
+    const pitchCanvas = document.createElement('canvas').transferControlToOffscreen();
     processing = true;
     worker.postMessage(
       {
         type: 'start',
         outputDirectoryHandle,
-        canvas: offscreen,
+        canvas,
+        pitchCanvas,
         interpolate,
       },
-      [offscreen],
+      [canvas, pitchCanvas],
     );
 
     while (!pendingUpdate && processing) {
@@ -89,14 +90,21 @@
     file = undefined;
   }
 
-  onMount(() => {
+  onMount(async () => {
+    // NOTE: web workers can't render SVGs, even though the spec says they should
+    // See: https://stackoverflow.com/a/79196371/5552584
+    const sendBitmap = (name: string, image: ImageBitmap) =>
+      worker.postMessage({ type: 'image', name, image }, [image]);
+    const pitch = await RasterImage.create('./src/assets/pitch.svg');
+    sendBitmap('pitch', await pitch.bitmap(288, 288));
+
+    // in dev mode show a preview
     if (import.meta.env.DEV && elDevDemoCanvas) {
       elDevDemoCanvas.width = WIDTH;
       elDevDemoCanvas.height = HEIGHT;
-      const ctx = elDevDemoCanvas.getContext('2d');
-      if (ctx) {
-        draw(elDevDemoCanvas, ctx, demoRows[50]!);
-      }
+
+      const offscreen = elDevDemoCanvas.transferControlToOffscreen();
+      worker.postMessage({ type: 'draw', offscreen, data: demoRows[50]! }, [offscreen]);
     }
   });
 </script>

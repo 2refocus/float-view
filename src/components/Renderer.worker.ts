@@ -25,9 +25,21 @@ let started = false;
 let totalFramesGenerated = 0;
 let totalFramesToGenerate = 0;
 let videos: Video[] = [];
+let images: Record<string, ImageBitmap> = {};
+
+let dbgCanvas: OffscreenCanvas | null = null;
+let dbgCtx: OffscreenCanvasRenderingContext2D | null = null;
 
 self.addEventListener('message', (e) => {
-  if (e.data.type === 'file') {
+  if (e.data.type === 'image') {
+    const bitmap = e.data.image as ImageBitmap;
+    self.postMessage({ type: 'log', message: `Loaded bitmap "${e.data.name}" (${bitmap.width}x${bitmap.height})...` });
+    images[e.data.name] = bitmap;
+  } else if (e.data.type === 'draw') {
+    if (!dbgCanvas) dbgCanvas = e.data.offscreen;
+    if (!dbgCtx) dbgCtx = e.data.offscreen.getContext('2d');
+    draw({ canvas: dbgCanvas!, ctx: dbgCtx!, data: e.data.data, images });
+  } else if (e.data.type === 'file') {
     self.postMessage({ type: 'log', message: 'Reading input file...' });
     parse(e.data.inputFile).then((result) => {
       self.postMessage({ type: 'log', message: 'Finished reading input file.' });
@@ -58,24 +70,25 @@ self.addEventListener('message', (e) => {
 
       self.postMessage({ type: 'log', message: `Found ${videos.length} segments.` });
     });
-  }
-
-  if (e.data.type === 'start') {
+  } else if (e.data.type === 'start') {
     self.postMessage({ type: 'log', message: 'Reading input file...' });
     if (!videos || videos.length === 0) {
       self.postMessage({ type: 'log', message: 'Error: no data available to render, please load a file.' });
     } else {
-      generateVideo(e.data.outputDirectoryHandle, e.data.canvas, e.data.interpolate || false);
+      generateVideo({
+        directoryHandle: e.data.outputDirectoryHandle,
+        canvas: e.data.canvas,
+        pitchCanvas: e.data.pitchCanvas,
+        interpolate: e.data.interpolate || false,
+      });
     }
-  }
-
-  if (e.data.type === 'update') {
+  } else if (e.data.type === 'update') {
     postUpdateMessage();
-  }
-
-  if (e.data.type === 'stop') {
+  } else if (e.data.type === 'stop') {
     started = false;
     self.postMessage({ type: 'log', message: 'Stopping video generation...' });
+  } else {
+    console.warn(`Unknown message`, e.data);
   }
 });
 
@@ -189,11 +202,14 @@ function interpolateDataPoint(dataA: RowWithIndex, dataB: RowWithIndex, progress
   return interpolated;
 }
 
-async function generateVideo(
-  directoryHandle: FileSystemDirectoryHandle,
-  canvas: OffscreenCanvas,
-  interpolate: boolean = false,
-) {
+interface GenerateVideoParams {
+  directoryHandle: FileSystemDirectoryHandle;
+  canvas: OffscreenCanvas;
+  interpolate?: boolean;
+  pitchCanvas: OffscreenCanvas;
+}
+
+async function generateVideo({ directoryHandle, canvas, pitchCanvas, interpolate = false }: GenerateVideoParams) {
   self.postMessage({ type: 'log', message: 'Setting up canvas...' });
 
   canvas.width = WIDTH;
@@ -284,7 +300,7 @@ async function generateVideo(
           const interpolatedData = interpolateDataPoint(currentData, nextData, progress);
 
           // render interpolated frame
-          draw(canvas, ctx, interpolatedData);
+          draw({ canvas, ctx, data: interpolatedData, images });
 
           // render as fast as the encoder can handle (otherwise we'll OOM by generating too many frames)
           while (encoder.encodeQueueSize > FPS * 10) {
@@ -309,7 +325,7 @@ async function generateVideo(
           return;
         }
 
-        draw(canvas, ctx, lastData);
+        draw({ canvas, ctx, data: lastData, images });
 
         while (encoder.encodeQueueSize > FPS * 10) {
           await new Promise((resolve) => setTimeout(resolve, 10));
@@ -330,7 +346,7 @@ async function generateVideo(
         const timeMicros = (data[RowKey.Time] - startTime) * 1_000_000;
 
         // render frame
-        draw(canvas, ctx, data);
+        draw({ canvas, ctx, data, images });
 
         // encode frames until time is reached
         while (true) {
