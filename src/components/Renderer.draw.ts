@@ -1,7 +1,7 @@
 import { RowKey, type RowWithIndex } from '../lib/parse/types';
 import type { Canvas, Ctx } from './Renderer.utils';
 
-const FONT_FAMILY = 'Noto Sans, Arial, sans-serif';
+const FONT_FAMILY = 'IosevkaTerm Nerd Font, monospace';
 const COLOUR_BG = '#1e293b';
 const COLOUR_ACTIVE = '#66ff66';
 
@@ -189,10 +189,10 @@ function drawPitch(params: PitchParams) {
 
     // draw arrow indicating front
     ctx.fillStyle = 'white';
-    ctx.font = getFont(w * 0.1);
+    ctx.font = getFont(w * 0.15);
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('➡', 0, 1);
+    ctx.fillText('➡', 0, 3);
 
     ctx.restore();
   }
@@ -206,19 +206,22 @@ function drawPitch(params: PitchParams) {
     ctx.save();
     ctx.translate(x, y);
 
+    const labelX = w * 0.15;
+    const valueX = w - labelX;
+
     const f = 0.07;
-    ctx.font = getFont(w * f);
+    ctx.font = getFont(w * f, 'bold');
     ctx.textAlign = 'left';
     ctx.fillStyle = '#cccccc';
-    ctx.fillText('Roll:', 0, w * f);
-    ctx.fillText('Pitch:', 0, w * f * 2);
-    ctx.fillText('Setpoint:', 0, w * f * 3);
+    ctx.fillText('Roll:', labelX, w * f);
+    ctx.fillText('Pitch:', labelX, w * f * 2);
+    ctx.fillText('Setpoint:', labelX, w * f * 3);
 
     ctx.textAlign = 'right';
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(`${roll.toFixed(2)}°`, w - 10, w * f);
-    ctx.fillText(`${pitch.toFixed(2)}°`, w - 10, w * f * 2);
-    ctx.fillText(setpoint !== undefined ? `${setpoint.toFixed(2)}°` : '-', w - 10, w * f * 3);
+    ctx.fillText(`${roll.toFixed(2)}°`, valueX, w * f);
+    ctx.fillText(`${pitch.toFixed(2)}°`, valueX, w * f * 2);
+    ctx.fillText(setpoint !== undefined ? `${setpoint.toFixed(2)}°` : '-', valueX, w * f * 3);
 
     ctx.restore();
   }
@@ -344,17 +347,21 @@ function drawFootpad(params: FootpadParams) {
     ctx.save();
     ctx.translate(x, y);
 
+    const labelX = w * 0.15;
+    const valueX = w - labelX;
+
     const f = 0.07;
-    ctx.font = getFont(w * f);
+    ctx.font = getFont(w * f, 'bold');
     ctx.textAlign = 'left';
     ctx.fillStyle = '#cccccc';
-    ctx.fillText('ADC1:', 0, w * f);
-    ctx.fillText('ADC2:', 0, w * f * 2);
+    ctx.fillText('ADC1:', labelX, w * f);
+    ctx.fillText('ADC2:', labelX, w * f * 2);
+
     ctx.textAlign = 'right';
     ctx.fillStyle = adc1Color;
-    ctx.fillText(`${adc1.toFixed(2)} V`, w - 10, w * f);
+    ctx.fillText(`${adc1.toFixed(2)} V`, valueX, w * f);
     ctx.fillStyle = adc2Color;
-    ctx.fillText(`${adc2.toFixed(2)} V`, w - 10, w * f * 2);
+    ctx.fillText(`${adc2.toFixed(2)} V`, valueX, w * f * 2);
 
     ctx.restore();
   }
