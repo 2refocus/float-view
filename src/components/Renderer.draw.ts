@@ -86,6 +86,7 @@ export function draw({ canvas, ctx, data, images }: DrawParams) {
     y: padding * 4 + gaugeHeight,
     w: gaugeWidth,
     h: gaugeHeight,
+    roll: data[RowKey.Roll],
     pitch: data[RowKey.Pitch],
     setpoint: data[RowKey.Setpoint],
     image: images['pitch']!,
@@ -148,13 +149,14 @@ interface BaseParams {
 }
 
 interface PitchParams extends BaseParams {
+  roll: number;
   pitch: number;
   setpoint?: number;
   image: ImageBitmap;
 }
 
 function drawPitch(params: PitchParams) {
-  const { ctx, pitch, setpoint, image } = params;
+  const { ctx, roll, pitch, setpoint, image } = params;
 
   {
     const { x, y, w, h } = params;
@@ -208,13 +210,15 @@ function drawPitch(params: PitchParams) {
     ctx.font = getFont(w * f);
     ctx.textAlign = 'left';
     ctx.fillStyle = '#cccccc';
-    ctx.fillText('Pitch:', 0, w * f);
-    ctx.fillText('Setpoint:', 0, w * f * 2);
+    ctx.fillText('Roll:', 0, w * f);
+    ctx.fillText('Pitch:', 0, w * f * 2);
+    ctx.fillText('Setpoint:', 0, w * f * 3);
 
     ctx.textAlign = 'right';
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(`${pitch.toFixed(2)}°`, w - 10, w * f);
-    ctx.fillText(setpoint !== undefined ? `${setpoint.toFixed(2)}°` : '-', w - 10, w * f * 2);
+    ctx.fillText(`${roll.toFixed(2)}°`, w - 10, w * f);
+    ctx.fillText(`${pitch.toFixed(2)}°`, w - 10, w * f * 2);
+    ctx.fillText(setpoint !== undefined ? `${setpoint.toFixed(2)}°` : '-', w - 10, w * f * 3);
 
     ctx.restore();
   }
