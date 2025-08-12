@@ -77,8 +77,8 @@ self.addEventListener('message', (e) => {
     } else {
       generateVideo({
         directoryHandle: e.data.outputDirectoryHandle,
+        filename: e.data.filename,
         canvas: e.data.canvas,
-        pitchCanvas: e.data.pitchCanvas,
         interpolate: e.data.interpolate || false,
       });
     }
@@ -116,8 +116,8 @@ class Video {
   }
 }
 
-async function createFileHandle(directoryHandle: FileSystemDirectoryHandle, canvas: OffscreenCanvas, index: number) {
-  const name = `floatViewRender_${index + 1}.webm`;
+async function createFileHandle(directoryHandle: FileSystemDirectoryHandle, canvas: OffscreenCanvas, baseName: string) {
+  const name = `${baseName}.webm`;
   const fileHandle = await directoryHandle.getFileHandle(name, { create: true });
   const fileWritableStream = await fileHandle.createWritable();
 
@@ -204,12 +204,12 @@ function interpolateDataPoint(dataA: RowWithIndex, dataB: RowWithIndex, progress
 
 interface GenerateVideoParams {
   directoryHandle: FileSystemDirectoryHandle;
+  filename: string;
   canvas: OffscreenCanvas;
   interpolate?: boolean;
-  pitchCanvas: OffscreenCanvas;
 }
 
-async function generateVideo({ directoryHandle, canvas, pitchCanvas, interpolate = false }: GenerateVideoParams) {
+async function generateVideo({ directoryHandle, canvas, filename, interpolate = false }: GenerateVideoParams) {
   self.postMessage({ type: 'log', message: 'Setting up canvas...' });
 
   canvas.width = WIDTH;
@@ -267,7 +267,8 @@ async function generateVideo({ directoryHandle, canvas, pitchCanvas, interpolate
   started = true;
   for (let i = 0; i < videos.length; i++) {
     const video = videos[i]!;
-    currentWriter = await createFileHandle(directoryHandle, canvas, i);
+    const baseName = `${filename} - segment_${(i + 1).toString().padStart(`${videos.length}`.length, '0')}`;
+    currentWriter = await createFileHandle(directoryHandle, canvas, baseName);
     self.postMessage({
       type: 'log',
       message: `Rendering segment ${i + 1} (${video.frameCount()} frames) into ${currentWriter.name}...`,

@@ -13,6 +13,7 @@
   let file = $state<File | undefined>(import.meta.env.DEV ? demoFile : undefined);
   let processing = $state(false);
   let interpolate = $state(false);
+  let filename = $state('');
 
   const createWorker = () => new Worker(new URL('./Renderer.worker.ts', import.meta.url), { type: 'module' });
   let worker = createWorker();
@@ -21,6 +22,7 @@
   $effect(() => {
     if (file) {
       worker.postMessage({ type: 'file', inputFile: file });
+      filename = file.name.replace(/(\.(zip|csv|json))+$/, '');
     }
   });
 
@@ -52,6 +54,11 @@
   });
 
   async function chooseOutputAndRender() {
+    if (!filename) {
+      alert('Please enter a filename!');
+      return;
+    }
+
     const outputDirectoryHandle = await window.showDirectoryPicker({
       id: 'output',
       mode: 'readwrite',
@@ -59,17 +66,16 @@
     });
 
     const canvas = document.createElement('canvas').transferControlToOffscreen();
-    const pitchCanvas = document.createElement('canvas').transferControlToOffscreen();
     processing = true;
     worker.postMessage(
       {
         type: 'start',
         outputDirectoryHandle,
         canvas,
-        pitchCanvas,
         interpolate,
+        filename,
       },
-      [canvas, pitchCanvas],
+      [canvas],
     );
 
     while (!pendingUpdate && processing) {
@@ -116,6 +122,14 @@
 
 <Picker bind:file />
 <div class="flex flex-col gap-2 p-4 justify-center">
+  <Input
+    class="w-1/2 m-auto"
+    id="filename"
+    label="Output filename (without extension)"
+    type="text"
+    placeholder="myRide"
+    bind:value={filename}
+  />
   <Input
     class="w-1/2 m-auto"
     id="interpolate"
