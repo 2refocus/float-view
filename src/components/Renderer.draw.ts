@@ -2,7 +2,8 @@ import { RowKey, type RowWithIndex } from '../lib/parse/types';
 import type { Canvas, Ctx } from './Renderer.utils';
 
 const FONT_FAMILY = 'Noto Sans, Arial, sans-serif';
-const BG_COLOUR = '#1e293b';
+const COLOUR_BG = '#1e293b';
+const COLOUR_ACTIVE = '#66ff66';
 
 interface ValueBoxConfig {
   label: string;
@@ -32,7 +33,7 @@ export interface DrawParams {
 
 export function draw({ canvas, ctx, data, images }: DrawParams) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = BG_COLOUR;
+  ctx.fillStyle = COLOUR_BG;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   const width = canvas.width;
@@ -100,6 +101,7 @@ export function draw({ canvas, ctx, data, images }: DrawParams) {
     h: gaugeHeight,
     adc1: data[RowKey.Adc1],
     adc2: data[RowKey.Adc2],
+    speed: data[RowKey.Speed],
   });
 
   // Grid layout for value boxes: 3 columns, 2 rows
@@ -167,7 +169,7 @@ function drawPitch(params: PitchParams) {
     if (setpoint !== undefined) {
       ctx.rotate((setpoint * Math.PI) / 180);
 
-      ctx.strokeStyle = '#00ffff';
+      ctx.strokeStyle = COLOUR_ACTIVE;
       ctx.beginPath();
       ctx.moveTo(x + w * 0.1 - centerX, 0);
       ctx.lineTo(x + w * 0.3 - centerX, 0);
@@ -313,10 +315,14 @@ function drawValueBox({ label, ctx, x, y, w, h, value, unit }: ValueBoxParams) {
 interface FootpadParams extends BaseParams {
   adc1: number;
   adc2: number;
+  speed: number;
 }
 
 function drawFootpad(params: FootpadParams) {
-  const { ctx, adc1, adc2 } = params;
+  const { ctx, adc1, adc2, speed } = params;
+
+  const adc1Color = adc1 < 2 ? (speed < 2 ? '#aaaaaa' : '#ff0000') : COLOUR_ACTIVE;
+  const adc2Color = adc2 < 2 ? (speed < 2 ? '#aaaaaa' : '#ff0000') : COLOUR_ACTIVE;
 
   {
     const x = params.x;
@@ -333,9 +339,9 @@ function drawFootpad(params: FootpadParams) {
     ctx.fillText('ADC1:', 0, w * f);
     ctx.fillText('ADC2:', 0, w * f * 2);
     ctx.textAlign = 'right';
-    ctx.fillStyle = adc1 > 2 ? '#66ff66' : '#ff0000';
+    ctx.fillStyle = adc1Color;
     ctx.fillText(`${adc1.toFixed(2)} V`, w - 10, w * f);
-    ctx.fillStyle = adc2 > 2 ? '#66ff66' : '#ff0000';
+    ctx.fillStyle = adc2Color;
     ctx.fillText(`${adc2.toFixed(2)} V`, w - 10, w * f * 2);
 
     ctx.restore();
@@ -376,7 +382,7 @@ function drawFootpad(params: FootpadParams) {
     const sensorOuterY = h * 0.3;
     const sensorInnerY = h * 0.175;
 
-    ctx.fillStyle = adc1 > 2 ? '#00ffff' : '#ff0000';
+    ctx.fillStyle = adc1Color;
     ctx.beginPath();
     ctx.moveTo(sensorPad, sensorOuterY);
     ctx.lineTo(sensorPad, h - sensorPad);
@@ -385,7 +391,7 @@ function drawFootpad(params: FootpadParams) {
     ctx.quadraticCurveTo(sensorPad, sensorInnerY, sensorPad, sensorOuterY);
     ctx.fill();
 
-    ctx.fillStyle = adc2 > 2 ? '#00ffff' : '#ff0000';
+    ctx.fillStyle = adc2Color;
     ctx.beginPath();
     ctx.moveTo(w - sensorPad, sensorOuterY);
     ctx.lineTo(w - sensorPad, h - sensorPad);
