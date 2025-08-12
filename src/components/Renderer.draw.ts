@@ -169,7 +169,7 @@ function drawPitch(params: PitchParams) {
 
     // setpoint indicators
     if (setpoint !== undefined) {
-      ctx.rotate((setpoint * Math.PI) / 180);
+      ctx.rotate((-setpoint * Math.PI) / 180);
 
       ctx.strokeStyle = COLOUR_ACTIVE;
       ctx.beginPath();
@@ -184,7 +184,7 @@ function drawPitch(params: PitchParams) {
     // pitch visualisation
     ctx.save();
     ctx.translate(centerX, centerY);
-    ctx.rotate((pitch * Math.PI) / 180);
+    ctx.rotate((-pitch * Math.PI) / 180);
     ctx.drawImage(image, -imageSize * 0.5, -imageSize * 0.5, imageSize, imageSize);
 
     // draw arrow indicating front
