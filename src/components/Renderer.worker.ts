@@ -49,8 +49,11 @@ self.addEventListener('message', (e) => {
       videos.length = 0;
 
       self.postMessage({ type: 'log', message: 'Scanning CSV for ride segments...' });
+
+      const startingIndex = e.data.startingIndex ? parseInt(e.data.startingIndex) : 0;
+
       let lastIndex = 0;
-      for (let i = 0; i < result.data.length; i++) {
+      for (let i = startingIndex; i < result.data.length; i++) {
         const prev = result.data[i - 1];
         const data = result.data[i]!;
         // if the time difference is more than 60 seconds, we assume a pause

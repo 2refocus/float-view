@@ -14,6 +14,7 @@
   let processing = $state(false);
   let interpolate = $state(false);
   let filename = $state('');
+  let startingIndex = $state('');
 
   const createWorker = () => new Worker(new URL('./Renderer.worker.ts', import.meta.url), { type: 'module' });
   let worker = createWorker();
@@ -21,7 +22,7 @@
   // when file changes, send it to the worker
   $effect(() => {
     if (file) {
-      worker.postMessage({ type: 'file', inputFile: file });
+      worker.postMessage({ type: 'file', inputFile: file, startingIndex });
       filename = file.name.replace(/(\.(zip|csv|json))+$/, '');
     }
   });
@@ -129,6 +130,16 @@
     type="text"
     placeholder="myRide"
     bind:value={filename}
+  />
+  <Input
+    class="w-1/2 m-auto"
+    id="startingIndex"
+    label="Starting index (optional, default: 0)"
+    type="number"
+    placeholder="0"
+    onblur={(e) => {
+      startingIndex = e.currentTarget.value;
+    }}
   />
   <Input
     class="w-1/2 m-auto"
