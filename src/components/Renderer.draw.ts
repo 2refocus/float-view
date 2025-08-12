@@ -17,7 +17,7 @@ const VALUE_BOX_CONFIGS: ValueBoxConfig[] = [
   { label: 'Current Motor', dataKey: RowKey.CurrentMotor, unit: 'A' },
   { label: 'Elevation', dataKey: RowKey.Altitude, unit: 'm' },
   { label: 'Temp Motor', dataKey: RowKey.TempMotor, unit: '°C' },
-  { label: 'Temp Battery', dataKey: RowKey.TempBattery, unit: '°C' },
+  { label: 'Temp Mosfet', dataKey: RowKey.TempMosfet, unit: '°C' },
 ];
 
 function getFont(size: number, weight: 'normal' | 'bold' = 'normal'): string {
