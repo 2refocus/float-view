@@ -184,6 +184,14 @@ function drawPitch(params: PitchParams) {
     ctx.translate(centerX, centerY);
     ctx.rotate((pitch * Math.PI) / 180);
     ctx.drawImage(image, -imageSize * 0.5, -imageSize * 0.5, imageSize, imageSize);
+
+    // draw arrow indicating front
+    ctx.fillStyle = 'white';
+    ctx.font = getFont(w * 0.1);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('➡', 0, 1);
+
     ctx.restore();
   }
 
