@@ -104,7 +104,7 @@
       elDevDemoCanvas.height = HEIGHT;
 
       const offscreen = elDevDemoCanvas.transferControlToOffscreen();
-      worker.postMessage({ type: 'draw', offscreen, data: demoRows[50]! }, [offscreen]);
+      worker.postMessage({ type: 'draw', offscreen, data: demoRows[124]! }, [offscreen]);
     }
   });
 </script>

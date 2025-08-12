@@ -14,7 +14,7 @@ const VALUE_BOX_CONFIGS: ValueBoxConfig[] = [
   { label: 'Bat V', dataKey: RowKey.Voltage, unit: 'V' },
   { label: 'Current Bat', dataKey: RowKey.CurrentBattery, unit: 'A' },
   { label: 'Current Motor', dataKey: RowKey.CurrentMotor, unit: 'A' },
-  { label: 'Temp MOSFET', dataKey: RowKey.TempMosfet, unit: '°C' },
+  { label: 'Elevation', dataKey: RowKey.Altitude, unit: 'm' },
   { label: 'Temp Motor', dataKey: RowKey.TempMotor, unit: '°C' },
   { label: 'Temp Battery', dataKey: RowKey.TempBattery, unit: '°C' },
 ];
@@ -82,12 +82,24 @@ export function draw({ canvas, ctx, data, images }: DrawParams) {
     canvas,
     ctx,
     x: padding,
-    y: padding + gaugeHeight,
+    y: padding * 4 + gaugeHeight,
     w: gaugeWidth,
     h: gaugeHeight,
     pitch: data[RowKey.Pitch],
-    setpoint: data[RowKey.Setpoint] ?? 0,
+    setpoint: data[RowKey.Setpoint],
     image: images['pitch']!,
+  });
+
+  // Footpad
+  drawFootpad({
+    canvas,
+    ctx,
+    x: padding + width * 0.5,
+    y: padding * 4 + gaugeHeight,
+    w: gaugeWidth,
+    h: gaugeHeight,
+    adc1: data[RowKey.Adc1],
+    adc2: data[RowKey.Adc2],
   });
 
   // Grid layout for value boxes: 3 columns, 2 rows
@@ -135,47 +147,67 @@ interface BaseParams {
 
 interface PitchParams extends BaseParams {
   pitch: number;
-  setpoint: number;
+  setpoint?: number;
   image: ImageBitmap;
 }
 
-function drawPitch({ ctx, x, y, w, h, pitch, setpoint, image }: PitchParams) {
-  const centerX = x + w * 0.5;
-  const centerY = y + h * 0.5;
-  const imageSize = Math.max(w, h);
+function drawPitch(params: PitchParams) {
+  const { ctx, pitch, setpoint, image } = params;
 
-  // setpoint indicators
-  ctx.save();
-  ctx.translate(centerX, centerY);
-  ctx.rotate((setpoint * Math.PI) / 180);
+  {
+    const { x, y, w, h } = params;
+    const centerX = x + w * 0.5;
+    const centerY = y + h * 0.35;
+    const imageSize = Math.max(w, h);
 
-  ctx.strokeStyle = '#00ffff';
-  ctx.beginPath();
-  ctx.moveTo(x + w * 0.1 - centerX, 0);
-  ctx.lineTo(x + w * 0.3 - centerX, 0);
-  ctx.moveTo(x + w * 0.7 - centerX, 0);
-  ctx.lineTo(x + w * 0.9 - centerX, 0);
-  ctx.stroke();
-  ctx.restore();
+    ctx.save();
+    ctx.translate(centerX, centerY);
 
-  // pitch visualisation
-  ctx.save();
-  ctx.translate(centerX, centerY);
-  ctx.rotate((pitch * Math.PI) / 180);
-  ctx.drawImage(image, -imageSize * 0.5, -imageSize * 0.5, imageSize, imageSize);
-  ctx.restore();
+    // setpoint indicators
+    if (setpoint !== undefined) {
+      ctx.rotate((setpoint * Math.PI) / 180);
+
+      ctx.strokeStyle = '#00ffff';
+      ctx.beginPath();
+      ctx.moveTo(x + w * 0.1 - centerX, 0);
+      ctx.lineTo(x + w * 0.3 - centerX, 0);
+      ctx.moveTo(x + w * 0.7 - centerX, 0);
+      ctx.lineTo(x + w * 0.9 - centerX, 0);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // pitch visualisation
+    ctx.save();
+    ctx.translate(centerX, centerY);
+    ctx.rotate((pitch * Math.PI) / 180);
+    ctx.drawImage(image, -imageSize * 0.5, -imageSize * 0.5, imageSize, imageSize);
+    ctx.restore();
+  }
 
   // data labels
-  ctx.fillStyle = '#ffffff';
-  ctx.textAlign = 'left';
-  ctx.font = getFont(w * 0.07);
+  {
+    const x = params.x;
+    const y = params.y + params.h * 0.8;
+    const w = params.w;
 
-  ctx.fillText(`Pitch:`, x, y + h * 0.84);
-  ctx.fillText(`Setpoint:`, x, y + h * 0.92);
+    ctx.save();
+    ctx.translate(x, y);
 
-  ctx.textAlign = 'right';
-  ctx.fillText(`${pitch.toFixed(1)}°`, x + w, y + h * 0.84);
-  ctx.fillText(`${setpoint.toFixed(1)}°`, x + w, y + h * 0.92);
+    const f = 0.07;
+    ctx.font = getFont(w * f);
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#cccccc';
+    ctx.fillText('Pitch:', 0, w * f);
+    ctx.fillText('Setpoint:', 0, w * f * 2);
+
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(`${pitch.toFixed(2)}°`, w - 10, w * f);
+    ctx.fillText(setpoint !== undefined ? `${setpoint.toFixed(2)}°` : '-', w - 10, w * f * 2);
+
+    ctx.restore();
+  }
 }
 
 interface GaugeParams extends BaseParams {
@@ -276,4 +308,92 @@ function drawValueBox({ label, ctx, x, y, w, h, value, unit }: ValueBoxParams) {
   ctx.font = getFont(Math.max(14, w * 0.12), 'bold');
   const displayValue = Math.abs(value) < 0.1 ? value.toFixed(2) : value.toFixed(1);
   ctx.fillText(`${displayValue} ${unit}`, x + w / 2, y + h * 0.75);
+}
+
+interface FootpadParams extends BaseParams {
+  adc1: number;
+  adc2: number;
+}
+
+function drawFootpad(params: FootpadParams) {
+  const { ctx, adc1, adc2 } = params;
+
+  {
+    const x = params.x;
+    const y = params.y + params.h * 0.8;
+    const w = params.w;
+
+    ctx.save();
+    ctx.translate(x, y);
+
+    const f = 0.07;
+    ctx.font = getFont(w * f);
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#cccccc';
+    ctx.fillText('ADC1:', 0, w * f);
+    ctx.fillText('ADC2:', 0, w * f * 2);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = adc1 > 2 ? '#66ff66' : '#ff0000';
+    ctx.fillText(`${adc1.toFixed(2)} V`, w - 10, w * f);
+    ctx.fillStyle = adc2 > 2 ? '#66ff66' : '#ff0000';
+    ctx.fillText(`${adc2.toFixed(2)} V`, w - 10, w * f * 2);
+
+    ctx.restore();
+  }
+
+  {
+    const x = params.x + params.w * 0.1;
+    const y = params.y;
+    const w = params.w * 0.8;
+    const h = params.h * 0.8;
+
+    const padding = w * 0.1;
+
+    ctx.save();
+    ctx.translate(x, y);
+
+    // footpad outline
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(padding, h - padding);
+    ctx.lineTo(padding, padding + h * 0.2); // Stop before the curve
+    ctx.quadraticCurveTo(padding, padding, w * 0.45, padding);
+    ctx.lineTo(w * 0.55, padding);
+    ctx.quadraticCurveTo(w - padding, padding, w - padding, padding + h * 0.2);
+    ctx.lineTo(w - padding, h - padding);
+    ctx.lineTo(padding, h - padding);
+    ctx.stroke();
+
+    // divider line
+    ctx.beginPath();
+    ctx.moveTo(w * 0.5, padding + h * 0.1);
+    ctx.lineTo(w * 0.5, h - padding - h * 0.1);
+    ctx.stroke();
+
+    // sensors
+    const sensorPad = w * 0.15;
+    const sensorOuterY = h * 0.3;
+    const sensorInnerY = h * 0.175;
+
+    ctx.fillStyle = adc1 > 2 ? '#00ffff' : '#ff0000';
+    ctx.beginPath();
+    ctx.moveTo(sensorPad, sensorOuterY);
+    ctx.lineTo(sensorPad, h - sensorPad);
+    ctx.lineTo(w * 0.45, h - sensorPad);
+    ctx.lineTo(w * 0.45, sensorInnerY);
+    ctx.quadraticCurveTo(sensorPad, sensorInnerY, sensorPad, sensorOuterY);
+    ctx.fill();
+
+    ctx.fillStyle = adc2 > 2 ? '#00ffff' : '#ff0000';
+    ctx.beginPath();
+    ctx.moveTo(w - sensorPad, sensorOuterY);
+    ctx.lineTo(w - sensorPad, h - sensorPad);
+    ctx.lineTo(w * 0.55, h - sensorPad);
+    ctx.lineTo(w * 0.55, sensorInnerY);
+    ctx.quadraticCurveTo(w - sensorPad, sensorInnerY, w - sensorPad, sensorOuterY);
+    ctx.fill();
+
+    ctx.restore();
+  }
 }

@@ -262,6 +262,8 @@ async function generateVideo({ directoryHandle, canvas, pitchCanvas, interpolate
   const start = performance.now();
   const frameDurationMicros = 1_000_000 / FPS;
 
+  const backoffThreshold = FPS * 2;
+
   started = true;
   for (let i = 0; i < videos.length; i++) {
     const video = videos[i]!;
@@ -302,8 +304,11 @@ async function generateVideo({ directoryHandle, canvas, pitchCanvas, interpolate
           // render interpolated frame
           draw({ canvas, ctx, data: interpolatedData, images });
 
+          // if the encoder is going faster than our rendering, we don't get progress messages
+          if (totalFramesGenerated % 2000 === 0) postUpdateMessage();
+
           // render as fast as the encoder can handle (otherwise we'll OOM by generating too many frames)
-          while (encoder.encodeQueueSize > FPS * 10) {
+          while (encoder.encodeQueueSize > backoffThreshold) {
             await new Promise((resolve) => setTimeout(resolve, 10));
           }
 
@@ -327,7 +332,11 @@ async function generateVideo({ directoryHandle, canvas, pitchCanvas, interpolate
 
         draw({ canvas, ctx, data: lastData, images });
 
-        while (encoder.encodeQueueSize > FPS * 10) {
+        // if the encoder is going faster than our rendering, we don't get progress messages
+        if (totalFramesGenerated % 2000 === 0) postUpdateMessage();
+
+        // render as fast as the encoder can handle (otherwise we'll OOM by generating too many frames)
+        while (encoder.encodeQueueSize > backoffThreshold) {
           await new Promise((resolve) => setTimeout(resolve, 10));
         }
 
@@ -354,8 +363,11 @@ async function generateVideo({ directoryHandle, canvas, pitchCanvas, interpolate
             return;
           }
 
+          // if the encoder is going faster than our rendering, we don't get progress messages
+          if (totalFramesGenerated % 2000 === 0) postUpdateMessage();
+
           // render as fast as the encoder can handle (otherwise we'll OOM by generating too many frames)
-          while (encoder.encodeQueueSize > FPS * 10) {
+          while (encoder.encodeQueueSize > backoffThreshold) {
             await new Promise((resolve) => setTimeout(resolve, 10));
           }
 
