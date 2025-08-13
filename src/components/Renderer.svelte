@@ -144,55 +144,57 @@
   });
 </script>
 
-<div>
-  <p>Currently experimental and probably doesn't work!</p>
-  <p>Please note, this currently only works in chromium-based browsers since it uses the File System Access API.</p>
-</div>
-
-<Picker bind:file />
-<div class="flex flex-col gap-2 p-4 justify-center">
-  <Input
-    class="w-1/2 m-auto"
-    id="filename"
-    label="Output filename (without extension)"
-    type="text"
-    placeholder="myRide"
-    bind:value={filename}
-  />
-  <Input
-    class="w-1/2 m-auto"
-    id="startingIndex"
-    label="Starting index (optional, default: 0)"
-    type="number"
-    placeholder="0"
-    onblur={(e) => (startingIndex = e.currentTarget.value)}
-  />
-  <Input
-    class="w-1/2 m-auto"
-    id="endingIndex"
-    label="Ending index (optional, default: end of file)"
-    type="number"
-    placeholder="0"
-    onblur={(e) => (endingIndex = e.currentTarget.value)}
-  />
-  <Input
-    class="w-1/2 m-auto"
-    id="interpolate"
-    type="checkbox"
-    bind:checked={interpolate}
-    label="Interpolate between data points (smooth transitions)"
-  />
-  <Button onclick={() => chooseOutputAndRender()}>choose output and render!</Button>
-  <Button onclick={() => stop()}>cancel</Button>
-  <Button onclick={() => clear()}>clear file</Button>
-  <div class="flex flex-row justify-between items-center gap-2">
-    <progress bind:this={elProgress} class="w-full grow"></progress>
-    <pre bind:this={elProgressText}>...</pre>
+<div class="flex flex-col gap-2 p-2">
+  <div>
+    <p>Currently experimental and probably doesn't work!</p>
+    <p>Please note, this currently only works in chromium-based browsers since it uses the File System Access API.</p>
   </div>
-</div>
-<div class="flex flex-row gap-2">
-  <pre bind:this={elOutput} class="h-[640px] max-h-[640px] w-full grow overflow-y-auto border"></pre>
-  {#if import.meta.env.DEV}
-    <canvas bind:this={elDevDemoCanvas} class="h-[640px] border"></canvas>
-  {/if}
+
+  <Picker bind:file />
+  <div class="flex flex-col gap-2 p-4 justify-center">
+    <Input
+      class="w-1/2 m-auto"
+      id="filename"
+      label="Output filename (without extension)"
+      type="text"
+      placeholder="myRide"
+      bind:value={filename}
+    />
+    <Input
+      class="w-1/2 m-auto"
+      id="startingIndex"
+      label="Starting index (optional, default: 0)"
+      type="number"
+      placeholder="0"
+      onblur={(e) => (startingIndex = e.currentTarget.value)}
+    />
+    <Input
+      class="w-1/2 m-auto"
+      id="endingIndex"
+      label="Ending index (optional, default: end of file)"
+      type="number"
+      placeholder="0"
+      onblur={(e) => (endingIndex = e.currentTarget.value)}
+    />
+    <Input
+      class="w-1/2 m-auto"
+      id="interpolate"
+      type="checkbox"
+      bind:checked={interpolate}
+      label="Interpolate between data points (smooth transitions)"
+    />
+    <Button onclick={() => chooseOutputAndRender()}>choose output and render!</Button>
+    <Button onclick={() => stop()}>cancel</Button>
+    <Button onclick={() => clear()}>clear file</Button>
+    <div class="flex flex-row justify-between items-center gap-2">
+      <progress bind:this={elProgress} class="w-full grow"></progress>
+      <pre bind:this={elProgressText}>...</pre>
+    </div>
+  </div>
+  <div class="flex flex-row gap-2">
+    <pre bind:this={elOutput} class="h-[540px] max-h-[540px] w-full p-2 grow overflow-y-auto border"></pre>
+    {#if import.meta.env.DEV}
+      <canvas bind:this={elDevDemoCanvas} class="h-[540px] border"></canvas>
+    {/if}
+  </div>
 </div>
