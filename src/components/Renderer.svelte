@@ -151,6 +151,7 @@
   }
 
   function clear() {
+    stop();
     elOutput!.textContent = '';
     file = undefined;
   }
