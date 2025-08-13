@@ -15,7 +15,6 @@ declare var WebMWriter: {
 };
 
 import { draw } from './Renderer.draw';
-import { FPS, WIDTH, HEIGHT, GAP_THRESHOLD_SECS } from './Renderer.common';
 import { RowKey, type RowWithIndex } from '../lib/parse/types.js';
 import { parse } from '../lib/parse/index.js';
 
@@ -29,18 +28,13 @@ let totalFramesToGenerate = 0;
 let videos: Video[] = [];
 let images: Record<string, ImageBitmap> = {};
 
-let dbgCanvas: OffscreenCanvas | null = null;
-let dbgCtx: OffscreenCanvasRenderingContext2D | null = null;
-
 self.addEventListener('message', (e) => {
   if (e.data.type === 'image') {
     const bitmap = e.data.image as ImageBitmap;
     self.postMessage({ type: 'log', message: `Loaded bitmap "${e.data.name}" (${bitmap.width}x${bitmap.height})...` });
     images[e.data.name] = bitmap;
   } else if (e.data.type === 'draw') {
-    if (!dbgCanvas) dbgCanvas = e.data.offscreen;
-    if (!dbgCtx) dbgCtx = e.data.offscreen.getContext('2d');
-    draw({ canvas: dbgCanvas!, ctx: dbgCtx!, data: e.data.data, images });
+    draw({ canvas: e.data.offscreen, ctx: e.data.offscreen.getContext('2d'), data: e.data.data, images });
   } else if (e.data.type === 'file') {
     self.postMessage({ type: 'log', message: 'Reading input file...' });
     parse(e.data.inputFile).then((result) => {
@@ -62,7 +56,7 @@ self.addEventListener('message', (e) => {
         const prev = result.data[i - 1];
         const data = result.data[i]!;
         // if the time difference is more than 60 seconds, we assume a pause
-        if (prev && data[RowKey.Time] - prev[RowKey.Time] > GAP_THRESHOLD_SECS) {
+        if (prev && data[RowKey.Time] - prev[RowKey.Time] > e.data.gapThresholdSecs) {
           const slice = result.data.slice(lastIndex, i);
           if (slice.length > 1) {
             self.postMessage({ type: 'log', message: `Detected pause at ${data[RowKey.Time]}s` });
@@ -82,7 +76,7 @@ self.addEventListener('message', (e) => {
       self.postMessage({ type: 'log', message: `Found ${videos.length} segments.` });
       self.postMessage({
         type: 'log',
-        message: `Will generate ${videos.reduce((sum, video) => sum + video.frameCount(), 0)} frames.`,
+        message: `Will generate ${videos.reduce((sum, video) => sum + video.frameCount(e.data.fps), 0)} frames.`,
       });
     });
   } else if (e.data.type === 'start') {
@@ -95,6 +89,9 @@ self.addEventListener('message', (e) => {
         filename: e.data.filename,
         canvas: e.data.canvas,
         interpolate: e.data.interpolate || false,
+        fps: e.data.fps,
+        width: e.data.width,
+        height: e.data.height,
       });
     }
   } else if (e.data.type === 'update') {
@@ -119,11 +116,11 @@ class Video {
     }
   }
 
-  frameCount() {
+  frameCount(fps: number) {
     const startTime = this.csvData[0]![RowKey.Time];
     const endTime = this.csvData[this.csvData.length - 1]![RowKey.Time];
     const totalSeconds = endTime - startTime;
-    return Math.round(totalSeconds * FPS);
+    return Math.round(totalSeconds * fps);
   }
 
   startTime() {
@@ -131,7 +128,12 @@ class Video {
   }
 }
 
-async function createFileHandle(directoryHandle: FileSystemDirectoryHandle, canvas: OffscreenCanvas, baseName: string) {
+async function createFileHandle(
+  directoryHandle: FileSystemDirectoryHandle,
+  canvas: OffscreenCanvas,
+  baseName: string,
+  frameRate: number,
+) {
   const name = `${baseName}.webm`;
   const fileHandle = await directoryHandle.getFileHandle(name, { create: true });
   const fileWritableStream = await fileHandle.createWritable();
@@ -144,7 +146,7 @@ async function createFileHandle(directoryHandle: FileSystemDirectoryHandle, canv
       codec: 'VP8',
       width: canvas.width,
       height: canvas.height,
-      frameRate: FPS,
+      frameRate,
     }),
   };
 }
@@ -222,13 +224,24 @@ interface GenerateVideoParams {
   filename: string;
   canvas: OffscreenCanvas;
   interpolate?: boolean;
+  fps: number;
+  width: number;
+  height: number;
 }
 
-async function generateVideo({ directoryHandle, canvas, filename, interpolate = false }: GenerateVideoParams) {
+async function generateVideo({
+  directoryHandle,
+  fps,
+  width,
+  height,
+  canvas,
+  filename,
+  interpolate = false,
+}: GenerateVideoParams) {
   self.postMessage({ type: 'log', message: 'Setting up canvas...' });
 
-  canvas.width = WIDTH;
-  canvas.height = HEIGHT;
+  canvas.width = width;
+  canvas.height = height;
 
   const ctx = canvas.getContext('2d');
   if (!ctx) {
@@ -245,7 +258,7 @@ async function generateVideo({ directoryHandle, canvas, filename, interpolate = 
     width: canvas.width,
     height: canvas.height,
     bitrate: 2_000_000,
-    framerate: FPS,
+    framerate: fps,
   };
 
   const { supported } = await VideoEncoder.isConfigSupported(encoderConfig);
@@ -273,20 +286,20 @@ async function generateVideo({ directoryHandle, canvas, filename, interpolate = 
   self.postMessage({ type: 'log', message: `Beginning render... (interpolate: ${interpolate})` });
 
   totalFramesGenerated = 0;
-  totalFramesToGenerate = videos.reduce((sum, video) => sum + video.frameCount(), 0);
+  totalFramesToGenerate = videos.reduce((sum, video) => sum + video.frameCount(fps), 0);
   const start = performance.now();
-  const frameDurationMicros = 1_000_000 / FPS;
+  const frameDurationMicros = 1_000_000 / fps;
 
-  const backoffThreshold = FPS * 2;
+  const backoffThreshold = fps * 2;
 
   started = true;
   for (let i = 0; i < videos.length; i++) {
     const video = videos[i]!;
     const baseName = `${filename} - segment_${(i + 1).toString().padStart(`${videos.length}`.length, '0')}`;
-    currentWriter = await createFileHandle(directoryHandle, canvas, baseName);
+    currentWriter = await createFileHandle(directoryHandle, canvas, baseName, fps);
     self.postMessage({
       type: 'log',
-      message: `Rendering segment ${i + 1} (${video.frameCount()} frames) into ${currentWriter.name}...`,
+      message: `Rendering segment ${i + 1} (${video.frameCount(fps)} frames) into ${currentWriter.name}...`,
     });
 
     let frameNumber = 0;
@@ -326,7 +339,7 @@ async function generateVideo({ directoryHandle, canvas, filename, interpolate = 
           }
 
           const frame = new VideoFrame(canvas, { timestamp: frameTime });
-          encoder.encode(frame, { keyFrame: frameNumber % FPS === 0 });
+          encoder.encode(frame, { keyFrame: frameNumber % fps === 0 });
           frame.close();
 
           frameNumber++;
@@ -352,7 +365,7 @@ async function generateVideo({ directoryHandle, canvas, filename, interpolate = 
 
         const frameTime = Math.round(frameNumber * frameDurationMicros);
         const frame = new VideoFrame(canvas, { timestamp: frameTime });
-        encoder.encode(frame, { keyFrame: frameNumber % FPS === 0 });
+        encoder.encode(frame, { keyFrame: frameNumber % fps === 0 });
         frame.close();
 
         frameNumber++;
@@ -380,7 +393,7 @@ async function generateVideo({ directoryHandle, canvas, filename, interpolate = 
 
           const frameTime = Math.round(frameNumber * frameDurationMicros);
           const frame = new VideoFrame(canvas, { timestamp: frameTime });
-          encoder.encode(frame, { keyFrame: frameNumber % FPS === 0 });
+          encoder.encode(frame, { keyFrame: frameNumber % fps === 0 });
           frame.close();
 
           frameNumber++;

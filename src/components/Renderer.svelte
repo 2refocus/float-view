@@ -1,13 +1,12 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { HEIGHT, WIDTH } from './Renderer.common';
   import { demoFile, demoRows } from '../lib/parse/float-control';
   import Picker from './Picker.svelte';
   import Button from './Button.svelte';
   import Input from './Input.svelte';
   import { RasterImage } from './Renderer.utils';
 
-  let elDevDemoCanvas = $state<HTMLCanvasElement | null>(null);
+  let elDevDemoDiv = $state<HTMLDivElement | null>(null);
   let elProgress = $state<HTMLProgressElement | null>(null);
   let elProgressText = $state<HTMLPreElement | null>(null);
   let elOutput = $state<HTMLPreElement | null>(null);
@@ -17,6 +16,28 @@
   let filename = $state('');
   let startingIndex = $state('');
   let endingIndex = $state('');
+  let fps = $state('');
+  let width = $state('');
+  let height = $state('');
+  let gapThresholdSecs = $state('');
+
+  const defaultFps = 30;
+  const defaultWidth = 1440;
+  const defaultHeight = 1920;
+  const defaultGapThresholdSecs = 60;
+
+  let nFps = $derived(fps ? parseInt(fps, 10) : defaultFps);
+  let nWidth = $derived(width ? parseInt(width, 10) : defaultWidth);
+  let nHeight = $derived(height ? parseInt(height, 10) : defaultHeight);
+  let nGapThresholdSecs = $derived(gapThresholdSecs ? parseInt(gapThresholdSecs, 10) : defaultGapThresholdSecs);
+
+  // when relevant values change, update debug
+  $effect(() => {
+    if (!import.meta.env.DEV) return;
+    nWidth;
+    nHeight;
+    drawDebug();
+  });
 
   const createWorker = () => new Worker(new URL('./Renderer.worker.ts', import.meta.url), { type: 'module' });
   let worker = createWorker();
@@ -24,7 +45,14 @@
   // when file changes, send it to the worker
   $effect(() => {
     if (file) {
-      worker.postMessage({ type: 'file', inputFile: file, startingIndex, endingIndex });
+      worker.postMessage({
+        type: 'file',
+        inputFile: file,
+        startingIndex,
+        endingIndex,
+        fps: nFps,
+        gapThresholdSecs: nGapThresholdSecs,
+      });
       filename = file.name.replace(/(\.(zip|csv|json))+$/, '');
     }
   });
@@ -94,6 +122,9 @@
       {
         type: 'start',
         outputDirectoryHandle,
+        fps: nFps,
+        width: nWidth,
+        height: nHeight,
         canvas,
         interpolate,
         filename,
@@ -124,6 +155,21 @@
     file = undefined;
   }
 
+  let ready = false;
+  function drawDebug() {
+    if (import.meta.env.DEV && elDevDemoDiv && ready) {
+      elDevDemoDiv.innerHTML = '';
+      const canvas = elDevDemoDiv.appendChild(document.createElement('canvas'));
+      canvas.classList.add('h-full', 'grow');
+      canvas.width = nWidth;
+      canvas.height = nHeight;
+
+      const offscreen = canvas.transferControlToOffscreen();
+      console.log(offscreen);
+      worker.postMessage({ type: 'draw', offscreen, data: demoRows[124]! }, [offscreen]);
+    }
+  }
+
   onMount(async () => {
     // NOTE: web workers can't render SVGs, even though the spec says they should
     // so we rendering them in the UI thread here to a bitmap, and pass that to the worker
@@ -133,14 +179,8 @@
     sendBitmap('roll', await RasterImage.create('./src/assets/roll.svg').then((img) => img.bitmap(200, 180)));
     sendBitmap('pitch', await RasterImage.create('./src/assets/pitch.svg').then((img) => img.bitmap(500, 500)));
 
-    // in dev mode show a preview
-    if (import.meta.env.DEV && elDevDemoCanvas) {
-      elDevDemoCanvas.width = WIDTH;
-      elDevDemoCanvas.height = HEIGHT;
-
-      const offscreen = elDevDemoCanvas.transferControlToOffscreen();
-      worker.postMessage({ type: 'draw', offscreen, data: demoRows[124]! }, [offscreen]);
-    }
+    ready = true;
+    drawDebug();
   });
 </script>
 
@@ -151,9 +191,8 @@
   </div>
 
   <Picker bind:file />
-  <div class="flex flex-col gap-2 p-4 justify-center">
+  <div class="flex flex-col gap-2 p-4 justify-center w-3/4 m-auto">
     <Input
-      class="w-1/2 m-auto"
       id="filename"
       label="Output filename (without extension)"
       type="text"
@@ -161,23 +200,48 @@
       bind:value={filename}
     />
     <Input
-      class="w-1/2 m-auto"
+      id="fps"
+      label="FPS"
+      type="number"
+      placeholder={`${defaultFps}`}
+      onblur={(e) => (fps = e.currentTarget.value)}
+    />
+    <Input
+      id="width"
+      label="Width"
+      type="number"
+      placeholder={`${defaultWidth}`}
+      onblur={(e) => (width = e.currentTarget.value)}
+    />
+    <Input
+      id="height"
+      label="Height"
+      type="number"
+      placeholder={`${defaultHeight}`}
+      onblur={(e) => (height = e.currentTarget.value)}
+    />
+    <Input
+      id="gapThresholdSecs"
+      label="Seconds needed between datapoint before splitting segment"
+      type="number"
+      placeholder={`${defaultGapThresholdSecs}`}
+      onblur={(e) => (gapThresholdSecs = e.currentTarget.value)}
+    />
+    <Input
       id="startingIndex"
-      label="Starting index (optional, default: 0)"
+      label="Starting index"
       type="number"
       placeholder="0"
       onblur={(e) => (startingIndex = e.currentTarget.value)}
     />
     <Input
-      class="w-1/2 m-auto"
       id="endingIndex"
-      label="Ending index (optional, default: end of file)"
+      label="Ending index (optional, set to 0 for end of file)"
       type="number"
       placeholder="0"
       onblur={(e) => (endingIndex = e.currentTarget.value)}
     />
     <Input
-      class="w-1/2 m-auto"
       id="interpolate"
       type="checkbox"
       bind:checked={interpolate}
@@ -194,7 +258,7 @@
   <div class="flex flex-row gap-2">
     <pre bind:this={elOutput} class="h-[540px] max-h-[540px] w-full p-2 grow overflow-y-auto border"></pre>
     {#if import.meta.env.DEV}
-      <canvas bind:this={elDevDemoCanvas} class="h-[540px] border"></canvas>
+      <div bind:this={elDevDemoDiv} class="relative h-[540px] border"></div>
     {/if}
   </div>
 </div>
