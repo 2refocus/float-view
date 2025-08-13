@@ -29,6 +29,8 @@
     }
   });
 
+  Notification.requestPermission();
+
   let lastProgressFrameCount = 0;
   let lastProgressUpdate = 0;
   let pendingUpdate = false;
@@ -37,7 +39,12 @@
       case 'complete':
         elProgress!.value = elProgress!.max;
         elOutput!.textContent += `Finished rendering!\n`;
+
         processing = false;
+
+        if (Notification.permission === 'granted') {
+          new Notification('Rendering complete!', { body: 'Woohoo!' });
+        }
         return;
       case 'progress': {
         const { totalFramesToGenerate, totalFramesGenerated } = e.data;
@@ -46,7 +53,7 @@
         const fps = Math.round(framesSinceLastUpdate / (durationSinceLastUpdate / 1000));
         const pct = ((totalFramesGenerated / totalFramesToGenerate) * 100).toFixed(2);
 
-        elProgressText!.textContent = `${pct}% ${totalFramesGenerated}/${totalFramesToGenerate} (${fps} fps) `;
+        elProgressText!.textContent = `${pct}% ${totalFramesGenerated}/${totalFramesToGenerate} (${fps} fps)`;
         elProgress!.max = e.data.totalFramesToGenerate;
         elProgress!.value = e.data.totalFramesGenerated;
 
@@ -180,7 +187,7 @@
   <Button onclick={() => clear()}>clear file</Button>
   <div class="flex flex-row justify-between items-center gap-2">
     <progress bind:this={elProgress} class="w-full grow"></progress>
-    <pre bind:this={elProgressText}></pre>
+    <pre bind:this={elProgressText}>...</pre>
   </div>
 </div>
 <div class="flex flex-row gap-2">
