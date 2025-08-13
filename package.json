@@ -2,7 +2,7 @@
   "name": "float-view",
   "private": true,
   "license": "AGPL-3.0-only",
-  "version": "0.10.15",
+  "version": "0.10.16",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -13,8 +13,7 @@
     "types:svelte": "svelte-check --tsconfig tsconfig.json",
     "tests": "vitest --config vitest.config.ts",
     "format": "prettier --write --list-different .",
-    "format:check": "prettier --check .",
-    "ci:bump": "tsx scripts/bump.ts"
+    "format:check": "prettier --check ."
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^4.0.0-next.7",
