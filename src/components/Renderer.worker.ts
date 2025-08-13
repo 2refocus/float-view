@@ -23,8 +23,6 @@ self.postMessage({ type: 'log', message: 'Renderer worker started.' });
 
 let started = false;
 
-let lastUpdateTime = performance.now();
-let lastUpdateFrameCount = 0;
 let totalFramesGenerated = 0;
 let totalFramesToGenerate = 0;
 
@@ -110,16 +108,6 @@ self.addEventListener('message', (e) => {
 });
 
 function postUpdateMessage() {
-  const durationSinceLastUpdate = performance.now() - lastUpdateTime;
-  const framesSinceLastUpdate = totalFramesGenerated - lastUpdateFrameCount;
-  const fps = Math.round(framesSinceLastUpdate / (durationSinceLastUpdate / 1000));
-  lastUpdateFrameCount = totalFramesGenerated;
-  lastUpdateTime = performance.now();
-  const pct = ((totalFramesGenerated / totalFramesToGenerate) * 100).toFixed(2);
-  self.postMessage({
-    type: 'log',
-    message: `Frames rendered: ${totalFramesGenerated} (${fps} fps) ${pct}%`,
-  });
   self.postMessage({ type: 'progress', totalFramesGenerated, totalFramesToGenerate });
 }
 

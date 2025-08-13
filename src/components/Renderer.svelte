@@ -9,6 +9,7 @@
 
   let elDevDemoCanvas = $state<HTMLCanvasElement | null>(null);
   let elProgress = $state<HTMLProgressElement | null>(null);
+  let elProgressText = $state<HTMLPreElement | null>(null);
   let elOutput = $state<HTMLPreElement | null>(null);
   let file = $state<File | undefined>(import.meta.env.DEV ? demoFile : undefined);
   let processing = $state(false);
@@ -28,6 +29,8 @@
     }
   });
 
+  let lastProgressFrameCount = 0;
+  let lastProgressUpdate = 0;
   let pendingUpdate = false;
   worker.addEventListener('message', (e) => {
     switch (e.data.type) {
@@ -36,11 +39,22 @@
         elOutput!.textContent += `Finished rendering!\n`;
         processing = false;
         return;
-      case 'progress':
-        pendingUpdate = false;
+      case 'progress': {
+        const { totalFramesToGenerate, totalFramesGenerated } = e.data;
+        const durationSinceLastUpdate = performance.now() - lastProgressUpdate;
+        const framesSinceLastUpdate = totalFramesGenerated - lastProgressFrameCount;
+        const fps = Math.round(framesSinceLastUpdate / (durationSinceLastUpdate / 1000));
+        const pct = ((totalFramesGenerated / totalFramesToGenerate) * 100).toFixed(2);
+
+        elProgressText!.textContent = `${pct}% ${totalFramesGenerated}/${totalFramesToGenerate} (${fps} fps) `;
         elProgress!.max = e.data.totalFramesToGenerate;
         elProgress!.value = e.data.totalFramesGenerated;
+
+        lastProgressFrameCount = totalFramesGenerated;
+        lastProgressUpdate = performance.now();
+        pendingUpdate = false;
         return;
+      }
       case 'log':
         elOutput!.textContent += e.data.message + '\n';
         elOutput!.scrollTop = elOutput!.scrollHeight;
@@ -79,6 +93,8 @@
       },
       [canvas],
     );
+
+    lastProgressUpdate = performance.now();
 
     while (processing) {
       if (!pendingUpdate) {
@@ -162,7 +178,10 @@
   <Button onclick={() => chooseOutputAndRender()}>choose output and render!</Button>
   <Button onclick={() => stop()}>cancel</Button>
   <Button onclick={() => clear()}>clear file</Button>
-  <progress bind:this={elProgress} class="w-full"></progress>
+  <div class="flex flex-row justify-between items-center gap-2">
+    <progress bind:this={elProgress} class="w-full grow"></progress>
+    <pre bind:this={elProgressText}></pre>
+  </div>
 </div>
 <div class="flex flex-row gap-2">
   <pre bind:this={elOutput} class="h-[640px] max-h-[640px] w-full grow overflow-y-auto border"></pre>
