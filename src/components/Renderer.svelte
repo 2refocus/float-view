@@ -102,8 +102,8 @@
     // See: https://stackoverflow.com/a/79196371/5552584
     const sendBitmap = (name: string, image: ImageBitmap) =>
       worker.postMessage({ type: 'image', name, image }, [image]);
-    const pitch = await RasterImage.create('./src/assets/pitch.svg');
-    sendBitmap('pitch', await pitch.bitmap(288, 288));
+    sendBitmap('roll', await RasterImage.create('./src/assets/roll.svg').then((img) => img.bitmap(200, 180)));
+    sendBitmap('pitch', await RasterImage.create('./src/assets/pitch.svg').then((img) => img.bitmap(250, 250)));
 
     // in dev mode show a preview
     if (import.meta.env.DEV && elDevDemoCanvas) {

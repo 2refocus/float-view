@@ -89,7 +89,8 @@ export function draw({ canvas, ctx, data, images }: DrawParams) {
     roll: data[RowKey.Roll],
     pitch: data[RowKey.Pitch],
     setpoint: data[RowKey.Setpoint],
-    image: images['pitch']!,
+    rollImage: images['roll']!,
+    pitchImage: images['pitch']!,
   });
 
   // Footpad
@@ -152,17 +153,25 @@ interface PitchParams extends BaseParams {
   roll: number;
   pitch: number;
   setpoint?: number;
-  image: ImageBitmap;
+  rollImage: ImageBitmap;
+  pitchImage: ImageBitmap;
+}
+
+function getImageDimensions(image: ImageBitmap, maxSpaceLength: number): [number, number] {
+  const maxImgLength = Math.max(image.width, image.height);
+  const scale = maxSpaceLength / maxImgLength;
+  return [image.width * scale, image.height * scale];
 }
 
 function drawPitch(params: PitchParams) {
-  const { ctx, roll, pitch, setpoint, image } = params;
+  const { ctx, roll, pitch, setpoint, rollImage, pitchImage } = params;
 
+  // pitch
   {
     const { x, y, w, h } = params;
     const centerX = x + w * 0.5;
-    const centerY = y + h * 0.35;
-    const imageSize = Math.max(w, h);
+    const centerY = y + h * 0.1;
+    const [imgW, imgH] = getImageDimensions(pitchImage, Math.max(w, h));
 
     ctx.save();
     ctx.translate(centerX, centerY);
@@ -178,14 +187,11 @@ function drawPitch(params: PitchParams) {
       ctx.moveTo(x + w * 0.7 - centerX, 0);
       ctx.lineTo(x + w * 0.9 - centerX, 0);
       ctx.stroke();
-      ctx.restore();
     }
 
     // pitch visualisation
-    ctx.save();
-    ctx.translate(centerX, centerY);
     ctx.rotate((-pitch * Math.PI) / 180);
-    ctx.drawImage(image, -imageSize * 0.5, -imageSize * 0.5, imageSize, imageSize);
+    ctx.drawImage(pitchImage, -imgW * 0.5, -imgH * 0.5, imgW, imgH);
 
     // draw arrow indicating front
     ctx.fillStyle = 'white';
@@ -193,6 +199,23 @@ function drawPitch(params: PitchParams) {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('➡', 0, 3);
+
+    ctx.restore();
+  }
+
+  // roll
+  {
+    const { x, y, w, h } = params;
+    const centerX = x + w * 0.5;
+    const centerY = y + h * 0.55;
+    const [imgW, imgH] = getImageDimensions(rollImage, Math.max(w, h) * 0.4);
+
+    ctx.save();
+    ctx.translate(centerX, centerY);
+
+    ctx.rotate((-roll * Math.PI) / 180);
+    console.log(rollImage);
+    ctx.drawImage(rollImage, -imgW * 0.5, -imgH * 0.5, imgW, imgH);
 
     ctx.restore();
   }
