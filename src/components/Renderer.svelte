@@ -146,7 +146,7 @@
 
 <div class="flex flex-col gap-2 p-2">
   <div>
-    <p>Currently experimental and probably doesn't work!</p>
+    <p>Currently <strong>experimental</strong> and likely has bugs!</p>
     <p>Please note, this currently only works in chromium-based browsers since it uses the File System Access API.</p>
   </div>
 
