@@ -172,7 +172,7 @@
 
   onMount(async () => {
     // NOTE: web workers can't render SVGs, even though the spec says they should
-    // so we rendering them in the UI thread here to a bitmap, and pass that to the worker
+    // so we render them in the UI thread here to a bitmap, and pass that to the worker
     // See: https://stackoverflow.com/a/79196371/5552584
     const sendBitmap = (name: string, image: ImageBitmap) =>
       worker.postMessage({ type: 'image', name, image }, [image]);
