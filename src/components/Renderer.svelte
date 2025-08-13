@@ -81,11 +81,12 @@
     );
 
     while (processing) {
-      await new Promise((resolve) => setTimeout(resolve, 500));
       if (!pendingUpdate) {
         worker.postMessage({ type: 'update' });
         pendingUpdate = true;
       }
+
+      await new Promise((resolve) => setTimeout(resolve, 500));
     }
   }
 

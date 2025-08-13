@@ -115,7 +115,11 @@ function postUpdateMessage() {
   const fps = Math.round(framesSinceLastUpdate / (durationSinceLastUpdate / 1000));
   lastUpdateFrameCount = totalFramesGenerated;
   lastUpdateTime = performance.now();
-  self.postMessage({ type: 'log', message: `Frames rendered: ${totalFramesGenerated} (${fps} fps)` });
+  const pct = ((totalFramesGenerated / totalFramesToGenerate) * 100).toFixed(2);
+  self.postMessage({
+    type: 'log',
+    message: `Frames rendered: ${totalFramesGenerated} (${fps} fps) ${pct}%`,
+  });
   self.postMessage({ type: 'progress', totalFramesGenerated, totalFramesToGenerate });
 }
 
