@@ -165,7 +165,6 @@
       canvas.height = nHeight;
 
       const offscreen = canvas.transferControlToOffscreen();
-      console.log(offscreen);
       worker.postMessage({ type: 'draw', offscreen, data: demoRows[124]! }, [offscreen]);
     }
   }
