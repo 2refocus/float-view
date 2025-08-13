@@ -214,7 +214,6 @@ function drawPitch(params: PitchParams) {
     ctx.translate(centerX, centerY);
 
     ctx.rotate((-roll * Math.PI) / 180);
-    console.log(rollImage);
     ctx.drawImage(rollImage, -imgW * 0.5, -imgH * 0.5, imgW, imgH);
 
     ctx.restore();

@@ -22,8 +22,12 @@ import { parse } from '../lib/parse/index.js';
 self.postMessage({ type: 'log', message: 'Renderer worker started.' });
 
 let started = false;
+
+let lastUpdateTime = performance.now();
+let lastUpdateFrameCount = 0;
 let totalFramesGenerated = 0;
 let totalFramesToGenerate = 0;
+
 let videos: Video[] = [];
 let images: Record<string, ImageBitmap> = {};
 
@@ -50,10 +54,13 @@ self.addEventListener('message', (e) => {
 
       self.postMessage({ type: 'log', message: 'Scanning CSV for ride segments...' });
 
-      const startingIndex = e.data.startingIndex ? parseInt(e.data.startingIndex) : 0;
+      const startingIndex = e.data.startingIndex ? Math.max(0, parseInt(e.data.startingIndex)) : 0;
+      const endingIndex = e.data.endingIndex
+        ? Math.min(result.data.length, parseInt(e.data.endingIndex))
+        : result.data.length;
 
       let lastIndex = 0;
-      for (let i = startingIndex; i < result.data.length; i++) {
+      for (let i = startingIndex; i < endingIndex; i++) {
         const prev = result.data[i - 1];
         const data = result.data[i]!;
         // if the time difference is more than 60 seconds, we assume a pause
@@ -67,11 +74,18 @@ self.addEventListener('message', (e) => {
         }
       }
 
-      if (lastIndex < result.data.length) {
-        videos.push(new Video(result.data.slice(lastIndex)));
+      if (lastIndex < endingIndex) {
+        const slice = result.data.slice(lastIndex, endingIndex);
+        if (slice.length > 1) {
+          videos.push(new Video(slice));
+        }
       }
 
       self.postMessage({ type: 'log', message: `Found ${videos.length} segments.` });
+      self.postMessage({
+        type: 'log',
+        message: `Will generate ${videos.reduce((sum, video) => sum + video.frameCount(), 0)} frames.`,
+      });
     });
   } else if (e.data.type === 'start') {
     self.postMessage({ type: 'log', message: 'Reading input file...' });
@@ -96,13 +110,19 @@ self.addEventListener('message', (e) => {
 });
 
 function postUpdateMessage() {
-  self.postMessage({ type: 'log', message: `Frames rendered: ${totalFramesGenerated}` });
+  const durationSinceLastUpdate = performance.now() - lastUpdateTime;
+  const framesSinceLastUpdate = totalFramesGenerated - lastUpdateFrameCount;
+  const fps = Math.round(framesSinceLastUpdate / (durationSinceLastUpdate / 1000));
+  lastUpdateFrameCount = totalFramesGenerated;
+  lastUpdateTime = performance.now();
+  self.postMessage({ type: 'log', message: `Frames rendered: ${totalFramesGenerated} (${fps} fps)` });
   self.postMessage({ type: 'progress', totalFramesGenerated, totalFramesToGenerate });
 }
 
 class Video {
   constructor(public readonly csvData: RowWithIndex[]) {
     if (!Array.isArray(csvData) || csvData.length < 2) {
+      console.warn({ csvData });
       throw new Error('Invalid CSV data provided');
     }
   }
@@ -258,7 +278,7 @@ async function generateVideo({ directoryHandle, canvas, filename, interpolate = 
 
   // render frames
 
-  self.postMessage({ type: 'log', message: `Beginning render... (interpolate: ${interpolate}` });
+  self.postMessage({ type: 'log', message: `Beginning render... (interpolate: ${interpolate})` });
 
   totalFramesGenerated = 0;
   totalFramesToGenerate = videos.reduce((sum, video) => sum + video.frameCount(), 0);
@@ -308,9 +328,6 @@ async function generateVideo({ directoryHandle, canvas, filename, interpolate = 
           // render interpolated frame
           draw({ canvas, ctx, data: interpolatedData, images });
 
-          // if the encoder is going faster than our rendering, we don't get progress messages
-          if (totalFramesGenerated % 2000 === 0) postUpdateMessage();
-
           // render as fast as the encoder can handle (otherwise we'll OOM by generating too many frames)
           while (encoder.encodeQueueSize > backoffThreshold) {
             await new Promise((resolve) => setTimeout(resolve, 10));
@@ -335,9 +352,6 @@ async function generateVideo({ directoryHandle, canvas, filename, interpolate = 
         }
 
         draw({ canvas, ctx, data: lastData, images });
-
-        // if the encoder is going faster than our rendering, we don't get progress messages
-        if (totalFramesGenerated % 2000 === 0) postUpdateMessage();
 
         // render as fast as the encoder can handle (otherwise we'll OOM by generating too many frames)
         while (encoder.encodeQueueSize > backoffThreshold) {
@@ -366,9 +380,6 @@ async function generateVideo({ directoryHandle, canvas, filename, interpolate = 
           if (!started) {
             return;
           }
-
-          // if the encoder is going faster than our rendering, we don't get progress messages
-          if (totalFramesGenerated % 2000 === 0) postUpdateMessage();
 
           // render as fast as the encoder can handle (otherwise we'll OOM by generating too many frames)
           while (encoder.encodeQueueSize > backoffThreshold) {

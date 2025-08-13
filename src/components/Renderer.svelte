@@ -15,6 +15,7 @@
   let interpolate = $state(false);
   let filename = $state('');
   let startingIndex = $state('');
+  let endingIndex = $state('');
 
   const createWorker = () => new Worker(new URL('./Renderer.worker.ts', import.meta.url), { type: 'module' });
   let worker = createWorker();
@@ -22,7 +23,7 @@
   // when file changes, send it to the worker
   $effect(() => {
     if (file) {
-      worker.postMessage({ type: 'file', inputFile: file, startingIndex });
+      worker.postMessage({ type: 'file', inputFile: file, startingIndex, endingIndex });
       filename = file.name.replace(/(\.(zip|csv|json))+$/, '');
     }
   });
@@ -79,10 +80,12 @@
       [canvas],
     );
 
-    while (!pendingUpdate && processing) {
+    while (processing) {
       await new Promise((resolve) => setTimeout(resolve, 500));
-      worker.postMessage({ type: 'update' });
-      pendingUpdate = true;
+      if (!pendingUpdate) {
+        worker.postMessage({ type: 'update' });
+        pendingUpdate = true;
+      }
     }
   }
 
@@ -99,6 +102,7 @@
 
   onMount(async () => {
     // NOTE: web workers can't render SVGs, even though the spec says they should
+    // so we rendering them in the UI thread here to a bitmap, and pass that to the worker
     // See: https://stackoverflow.com/a/79196371/5552584
     const sendBitmap = (name: string, image: ImageBitmap) =>
       worker.postMessage({ type: 'image', name, image }, [image]);
@@ -137,9 +141,15 @@
     label="Starting index (optional, default: 0)"
     type="number"
     placeholder="0"
-    onblur={(e) => {
-      startingIndex = e.currentTarget.value;
-    }}
+    onblur={(e) => (startingIndex = e.currentTarget.value)}
+  />
+  <Input
+    class="w-1/2 m-auto"
+    id="endingIndex"
+    label="Ending index (optional, default: end of file)"
+    type="number"
+    placeholder="0"
+    onblur={(e) => (endingIndex = e.currentTarget.value)}
   />
   <Input
     class="w-1/2 m-auto"
