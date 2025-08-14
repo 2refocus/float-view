@@ -1,19 +1,4 @@
-import '../lib/webm-writer2.js';
-interface WebmWriter2Options {
-  fileWriter: FileSystemWritableFileStream;
-  codec: 'VP8' | 'VP9';
-  width: number;
-  height: number;
-  frameRate: number;
-}
-interface WebmWriter2Instance {
-  addFrame(chunk: EncodedVideoChunk): void;
-  complete(): Promise<void>;
-}
-declare var WebMWriter: {
-  new (options: WebmWriter2Options): WebmWriter2Instance;
-};
-
+import WebMWriter from '../lib/webm-writer2.js';
 import { draw } from './Renderer.draw';
 import { RowKey, type RowWithIndex } from '../lib/parse/types.js';
 import { parse } from '../lib/parse/index.js';
