@@ -4,7 +4,9 @@
   import Picker from './Picker.svelte';
   import Button from './Button.svelte';
   import Input from './Input.svelte';
-  import { RasterImage } from './Renderer.utils';
+  import { SvgImage } from './Renderer.utils';
+  import rollSvg from '../assets/roll.svg?raw';
+  import pitchSvg from '../assets/pitch.svg?raw';
 
   let elDevDemoDiv = $state<HTMLDivElement | null>(null);
   let elProgress = $state<HTMLProgressElement | null>(null);
@@ -175,8 +177,8 @@
     // See: https://stackoverflow.com/a/79196371/5552584
     const sendBitmap = (name: string, image: ImageBitmap) =>
       worker.postMessage({ type: 'image', name, image }, [image]);
-    sendBitmap('roll', await RasterImage.create('./src/assets/roll.svg').then((img) => img.bitmap(200, 180)));
-    sendBitmap('pitch', await RasterImage.create('./src/assets/pitch.svg').then((img) => img.bitmap(500, 500)));
+    sendBitmap('roll', await SvgImage.create(rollSvg).then((img) => img.bitmap(200, 180)));
+    sendBitmap('pitch', await SvgImage.create(pitchSvg).then((img) => img.bitmap(500, 500)));
 
     ready = true;
     drawDebug();

@@ -1,21 +1,25 @@
 export type Ctx = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 export type Canvas = HTMLCanvasElement | OffscreenCanvas;
 
-export class RasterImage {
+export class SvgImage {
   private constructor(
     private readonly canvas: Canvas,
     private readonly ctx: Ctx,
     private readonly image: HTMLImageElement,
   ) {}
 
-  public static create(imagePath: string): Promise<RasterImage> {
+  public static create(svgXml: string): Promise<SvgImage> {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d')!;
     return new Promise((resolve) => {
+      const blob = new Blob([svgXml], { type: "image/svg+xml" });
+      const url = URL.createObjectURL(blob);
+
       const svgImg = new Image();
-      svgImg.src = imagePath;
+      svgImg.src = url;
       svgImg.onload = () => {
-        resolve(new RasterImage(canvas, ctx, svgImg));
+        resolve(new SvgImage(canvas, ctx, svgImg));
+        URL.revokeObjectURL(url);
       };
     });
   }
