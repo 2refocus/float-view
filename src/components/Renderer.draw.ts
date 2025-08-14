@@ -40,11 +40,16 @@ export function draw({ canvas, ctx, data, images }: DrawParams) {
   const height = canvas.height;
   const padding = width * 0.025;
 
-  // Calculate layout dimensions
-  const gaugeHeight = height * 0.3;
-  const valueBoxHeight = height * 0.1;
+  // draw version in top left
+  ctx.fillStyle = '#aaa';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.font = getFont(Math.max(12, height * 0.025));
+  ctx.fillText(import.meta.env.VITE_BUILD_VERSION, width * 0.5, height * (1 - 0.025));
 
   const gaugeWidth = width * 0.5 - 2 * padding;
+  const gaugeHeight = height * 0.3;
+  const valueBoxHeight = height * 0.1;
 
   // Draw speed gauge
   drawGauge({
@@ -113,9 +118,10 @@ export function draw({ canvas, ctx, data, images }: DrawParams) {
   const totalValueBoxesHeight = rows * valueBoxHeight + (rows - 1) * padding;
 
   // Calculate y position for value boxes grid
-  const valueBoxGridY = height - totalValueBoxesHeight - padding;
+  const valueBoxGridY = height - totalValueBoxesHeight - (padding*2);
 
   // Draw value boxes in a grid
+  ctx.textBaseline = 'middle';
   VALUE_BOX_CONFIGS.forEach((config, index) => {
     const row = Math.floor(index / columns);
     const col = index % columns;
@@ -213,7 +219,7 @@ function drawPitch(params: PitchParams) {
     ctx.save();
     ctx.translate(centerX, centerY);
 
-    ctx.rotate((-roll * Math.PI) / 180);
+    ctx.rotate((roll * Math.PI) / 180);
     ctx.drawImage(rollImage, -imgW * 0.5, -imgH * 0.5, imgW, imgH);
 
     ctx.restore();
