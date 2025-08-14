@@ -12,7 +12,7 @@ export class SvgImage {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d')!;
     return new Promise((resolve) => {
-      const blob = new Blob([svgXml], { type: "image/svg+xml" });
+      const blob = new Blob([svgXml], { type: 'image/svg+xml' });
       const url = URL.createObjectURL(blob);
 
       const svgImg = new Image();

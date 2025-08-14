@@ -118,7 +118,7 @@ export function draw({ canvas, ctx, data, images }: DrawParams) {
   const totalValueBoxesHeight = rows * valueBoxHeight + (rows - 1) * padding;
 
   // Calculate y position for value boxes grid
-  const valueBoxGridY = height - totalValueBoxesHeight - (padding*2);
+  const valueBoxGridY = height - totalValueBoxesHeight - padding * 2;
 
   // Draw value boxes in a grid
   ctx.textBaseline = 'middle';
