@@ -33,7 +33,6 @@
 
   // when relevant values change, update debug
   $effect(() => {
-    if (!import.meta.env.DEV) return;
     nWidth;
     nHeight;
     drawDebug();
@@ -158,7 +157,7 @@
 
   let ready = false;
   function drawDebug() {
-    if (import.meta.env.DEV && elDevDemoDiv && ready) {
+    if (elDevDemoDiv && ready) {
       elDevDemoDiv.innerHTML = '';
       const canvas = elDevDemoDiv.appendChild(document.createElement('canvas'));
       canvas.classList.add('h-full', 'grow');
@@ -257,8 +256,6 @@
   </div>
   <div class="flex flex-row gap-2">
     <pre bind:this={elOutput} class="h-[540px] max-h-[540px] w-full p-2 grow overflow-y-auto border"></pre>
-    {#if import.meta.env.DEV}
-      <div bind:this={elDevDemoDiv} class="relative h-[540px] border"></div>
-    {/if}
+    <div bind:this={elDevDemoDiv} class="relative h-[540px] border"></div>
   </div>
 </div>
