@@ -31,6 +31,8 @@ export interface DrawParams {
   images: Record<string, ImageBitmap>;
 }
 
+// TODO: show state
+// TODO: show battery cell percentage
 export function draw({ canvas, ctx, data, images }: DrawParams) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = COLOUR_BG;

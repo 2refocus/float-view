@@ -7,54 +7,54 @@
   import { SvgImage } from './Renderer.utils';
   import rollSvg from '../assets/roll.svg?raw';
   import pitchSvg from '../assets/pitch.svg?raw';
+  import type { WorkerCommand, WorkerMessage, TypedWorker } from './Renderer.types';
 
-  let elDevDemoDiv = $state<HTMLDivElement | null>(null);
-  let elProgress = $state<HTMLProgressElement | null>(null);
+  let elDemoContainer = $state<HTMLDivElement | null>(null);
+  let elProgressBar = $state<HTMLProgressElement | null>(null);
   let elProgressText = $state<HTMLPreElement | null>(null);
-  let elOutput = $state<HTMLPreElement | null>(null);
-  let file = $state<File | undefined>(import.meta.env.DEV ? demoFile : undefined);
-  let processing = $state(false);
+  let elLogOutput = $state<HTMLPreElement | null>(null);
+  let isRendering = $state(false);
   let interpolate = $state(false);
   let filename = $state('');
-  let startingIndex = $state('');
-  let endingIndex = $state('');
-  let fps = $state('');
-  let width = $state('');
-  let height = $state('');
-  let gapThresholdSecs = $state('');
+  let inputFile = $state<File | undefined>(import.meta.env.DEV ? demoFile : undefined);
+  let inputStartingIndex = $state('');
+  let inputEndingIndex = $state('');
+  let inputFps = $state('');
+  let inputWidth = $state('');
+  let inputHeight = $state('');
+  let inputGapThresholdSecs = $state('');
 
-  const defaultFps = 30;
-  const defaultWidth = 1440;
-  const defaultHeight = 1920;
+  const defaultFps = 20;
+  const defaultWidth = 1080;
+  const defaultHeight = 1440;
   const defaultGapThresholdSecs = 60;
 
-  let nFps = $derived(fps ? parseInt(fps, 10) : defaultFps);
-  let nWidth = $derived(width ? parseInt(width, 10) : defaultWidth);
-  let nHeight = $derived(height ? parseInt(height, 10) : defaultHeight);
-  let nGapThresholdSecs = $derived(gapThresholdSecs ? parseInt(gapThresholdSecs, 10) : defaultGapThresholdSecs);
+  let startingIndex = $derived(inputStartingIndex ? parseInt(inputStartingIndex, 10) : 0);
+  let endingIndex = $derived(inputEndingIndex ? parseInt(inputEndingIndex, 10) : 0);
+  let fps = $derived(inputFps ? parseInt(inputFps, 10) : defaultFps);
+  let width = $derived(inputWidth ? parseInt(inputWidth, 10) : defaultWidth);
+  let height = $derived(inputHeight ? parseInt(inputHeight, 10) : defaultHeight);
+  let gapThresholdSecs = $derived(
+    inputGapThresholdSecs ? parseInt(inputGapThresholdSecs, 10) : defaultGapThresholdSecs,
+  );
 
   // when relevant values change, update debug
   $effect(() => {
-    nWidth;
-    nHeight;
+    width;
+    height;
     drawDebug();
   });
 
-  const createWorker = () => new Worker(new URL('./Renderer.worker.ts', import.meta.url), { type: 'module' });
+  const createWorker = (): TypedWorker<WorkerCommand, WorkerMessage> =>
+    new Worker(new URL('./Renderer.worker.ts', import.meta.url), { type: 'module' });
+
   let worker = createWorker();
 
   // when file changes, send it to the worker
   $effect(() => {
-    if (file) {
-      worker.postMessage({
-        type: 'file',
-        inputFile: file,
-        startingIndex,
-        endingIndex,
-        fps: nFps,
-        gapThresholdSecs: nGapThresholdSecs,
-      });
-      filename = file.name.replace(/(\.(zip|csv|json))+$/, '');
+    if (inputFile) {
+      filename = inputFile.name.replace(/(\.(zip|csv|json))+$/, '');
+      worker.postMessage({ type: 'file', inputFile, startingIndex, endingIndex, fps, gapThresholdSecs });
     }
   });
 
@@ -63,28 +63,30 @@
   let lastProgressFrameCount = 0;
   let lastProgressUpdate = 0;
   let pendingUpdate = false;
-  worker.addEventListener('message', (e) => {
-    switch (e.data.type) {
+  worker.addEventListener('message', (event) => {
+    const msg = event.data;
+    switch (msg.type) {
       case 'complete':
-        elProgress!.value = elProgress!.max;
-        elOutput!.textContent += `Finished rendering!\n`;
+        elProgressBar!.value = elProgressBar!.max;
+        elLogOutput!.textContent += `Finished rendering!\n`;
 
-        processing = false;
+        isRendering = false;
 
         if (Notification.permission === 'granted') {
-          new Notification('Rendering complete!', { body: 'Woohoo!' });
+          const humanTime = new Date(msg.totalMilliseconds).toISOString().substr(11, 8);
+          new Notification('Rendering complete!', { body: `Rendered in ${humanTime} (hh:mm:ss)` });
         }
         return;
       case 'progress': {
-        const { totalFramesToGenerate, totalFramesGenerated } = e.data;
+        const { totalFramesToGenerate, totalFramesGenerated } = msg;
         const durationSinceLastUpdate = performance.now() - lastProgressUpdate;
         const framesSinceLastUpdate = totalFramesGenerated - lastProgressFrameCount;
         const fps = Math.round(framesSinceLastUpdate / (durationSinceLastUpdate / 1000));
         const pct = ((totalFramesGenerated / totalFramesToGenerate) * 100).toFixed(2);
 
         elProgressText!.textContent = `${pct}% ${totalFramesGenerated}/${totalFramesToGenerate} (${fps} fps)`;
-        elProgress!.max = e.data.totalFramesToGenerate;
-        elProgress!.value = e.data.totalFramesGenerated;
+        elProgressBar!.max = totalFramesToGenerate;
+        elProgressBar!.value = totalFramesGenerated;
 
         lastProgressFrameCount = totalFramesGenerated;
         lastProgressUpdate = performance.now();
@@ -92,15 +94,15 @@
         return;
       }
       case 'log':
-        elOutput!.textContent += e.data.message + '\n';
-        elOutput!.scrollTop = elOutput!.scrollHeight;
+        elLogOutput!.textContent += msg.message + '\n';
+        elLogOutput!.scrollTop = elLogOutput!.scrollHeight;
         return;
       case 'fatal':
-        alert(`Error: ${e.data.message}`);
-        processing = false;
+        alert(`Error: ${msg.message}`);
+        isRendering = false;
         return;
       default:
-        console.warn('Unknown message from worker', e.data);
+        console.warn('Unknown message from worker', msg);
         return;
     }
   });
@@ -118,24 +120,14 @@
     });
 
     const canvas = document.createElement('canvas').transferControlToOffscreen();
-    processing = true;
-    worker.postMessage(
-      {
-        type: 'start',
-        outputDirectoryHandle,
-        fps: nFps,
-        width: nWidth,
-        height: nHeight,
-        canvas,
-        interpolate,
-        filename,
-      },
-      [canvas],
-    );
+    isRendering = true;
+    worker.postMessage({ type: 'start', outputDirectoryHandle, fps, width, height, canvas, interpolate, filename }, [
+      canvas,
+    ]);
 
     lastProgressUpdate = performance.now();
 
-    while (processing) {
+    while (isRendering) {
       if (!pendingUpdate) {
         worker.postMessage({ type: 'update' });
         pendingUpdate = true;
@@ -147,27 +139,27 @@
 
   function stop() {
     worker.postMessage({ type: 'stop' });
-    elOutput!.textContent += `Cancelled!\n`;
-    processing = false;
+    elLogOutput!.textContent += `Cancelled!\n`;
+    isRendering = false;
   }
 
   function clear() {
     stop();
-    elOutput!.textContent = '';
-    file = undefined;
+    elLogOutput!.textContent = '';
+    inputFile = undefined;
   }
 
   let ready = false;
   function drawDebug() {
-    if (elDevDemoDiv && ready) {
-      elDevDemoDiv.innerHTML = '';
-      const canvas = elDevDemoDiv.appendChild(document.createElement('canvas'));
+    if (elDemoContainer && ready) {
+      elDemoContainer.innerHTML = '';
+      const canvas = elDemoContainer.appendChild(document.createElement('canvas'));
       canvas.classList.add('h-full', 'grow');
-      canvas.width = nWidth;
-      canvas.height = nHeight;
+      canvas.width = width;
+      canvas.height = height;
 
       const offscreen = canvas.transferControlToOffscreen();
-      worker.postMessage({ type: 'draw', offscreen, data: demoRows[124]! }, [offscreen]);
+      worker.postMessage({ type: 'draw', canvas: offscreen, data: demoRows[124]! }, [offscreen]);
     }
   }
 
@@ -191,7 +183,7 @@
     <p>Please note, this currently only works in chromium-based browsers since it uses the File System Access API.</p>
   </div>
 
-  <Picker bind:file />
+  <Picker bind:file={inputFile} />
   <div class="flex flex-col gap-2 p-4 justify-center w-3/4 m-auto">
     <Input
       id="filename"
@@ -205,42 +197,42 @@
       label="FPS"
       type="number"
       placeholder={`${defaultFps}`}
-      onblur={(e) => (fps = e.currentTarget.value)}
+      onblur={(e) => (inputFps = e.currentTarget.value)}
     />
     <Input
       id="width"
       label="Width"
       type="number"
       placeholder={`${defaultWidth}`}
-      onblur={(e) => (width = e.currentTarget.value)}
+      onblur={(e) => (inputWidth = e.currentTarget.value)}
     />
     <Input
       id="height"
       label="Height"
       type="number"
       placeholder={`${defaultHeight}`}
-      onblur={(e) => (height = e.currentTarget.value)}
+      onblur={(e) => (inputHeight = e.currentTarget.value)}
     />
     <Input
       id="gapThresholdSecs"
       label="Seconds needed between datapoint before splitting segment"
       type="number"
       placeholder={`${defaultGapThresholdSecs}`}
-      onblur={(e) => (gapThresholdSecs = e.currentTarget.value)}
+      onblur={(e) => (inputGapThresholdSecs = e.currentTarget.value)}
     />
     <Input
       id="startingIndex"
       label="Starting index"
       type="number"
       placeholder="0"
-      onblur={(e) => (startingIndex = e.currentTarget.value)}
+      onblur={(e) => (inputStartingIndex = e.currentTarget.value)}
     />
     <Input
       id="endingIndex"
       label="Ending index (optional, set to 0 for end of file)"
       type="number"
       placeholder="0"
-      onblur={(e) => (endingIndex = e.currentTarget.value)}
+      onblur={(e) => (inputEndingIndex = e.currentTarget.value)}
     />
     <Input
       id="interpolate"
@@ -252,12 +244,12 @@
     <Button onclick={() => stop()}>cancel</Button>
     <Button onclick={() => clear()}>clear file</Button>
     <div class="flex flex-row justify-between items-center gap-2">
-      <progress bind:this={elProgress} class="w-full grow"></progress>
+      <progress bind:this={elProgressBar} class="w-full grow"></progress>
       <pre bind:this={elProgressText}>...</pre>
     </div>
   </div>
   <div class="flex flex-row gap-2">
-    <pre bind:this={elOutput} class="h-[540px] max-h-[540px] w-full p-2 grow overflow-y-auto border"></pre>
-    <div bind:this={elDevDemoDiv} class="relative h-[540px] border"></div>
+    <pre bind:this={elLogOutput} class="h-[540px] max-h-[540px] w-full p-2 grow overflow-y-auto border"></pre>
+    <div bind:this={elDemoContainer} class="relative h-[540px] border"></div>
   </div>
 </div>

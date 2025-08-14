@@ -17,8 +17,13 @@ declare var WebMWriter: {
 import { draw } from './Renderer.draw';
 import { RowKey, type RowWithIndex } from '../lib/parse/types.js';
 import { parse } from '../lib/parse/index.js';
+import type { WorkerCommand, WorkerMessage } from './Renderer.types.js';
 
-self.postMessage({ type: 'log', message: 'Renderer worker started.' });
+function postMessage(message: WorkerMessage) {
+  self.postMessage(message);
+}
+
+postMessage({ type: 'log', message: 'Renderer worker started.' });
 
 let started = false;
 
@@ -28,84 +33,100 @@ let totalFramesToGenerate = 0;
 let videos: Video[] = [];
 let images: Record<string, ImageBitmap> = {};
 
+function log(message: string) {
+  postMessage({ type: 'log', message });
+}
+
+function fatal(message: string) {
+  postMessage({ type: 'fatal', message });
+  console.error(message);
+}
+
 self.addEventListener('message', (e) => {
-  if (e.data.type === 'image') {
-    const bitmap = e.data.image as ImageBitmap;
-    self.postMessage({ type: 'log', message: `Loaded bitmap "${e.data.name}" (${bitmap.width}x${bitmap.height})...` });
-    images[e.data.name] = bitmap;
-  } else if (e.data.type === 'draw') {
-    draw({ canvas: e.data.offscreen, ctx: e.data.offscreen.getContext('2d'), data: e.data.data, images });
-  } else if (e.data.type === 'file') {
-    self.postMessage({ type: 'log', message: 'Reading input file...' });
-    parse(e.data.inputFile).then((result) => {
-      self.postMessage({ type: 'log', message: 'Finished reading input file.' });
+  const command = e.data as WorkerCommand;
+  switch (command.type) {
+    case 'image': {
+      const { name, image } = command;
+      log(`Loaded bitmap "${name}" (${image.width}x${image.height})...`);
+      images[name] = image;
+      return;
+    }
+    case 'draw':
+      draw({ canvas: command.canvas, ctx: command.canvas.getContext('2d')!, data: command.data, images });
+      return;
 
-      // split into segments
+    case 'file':
+      log('Reading input file...');
+      parse(command.inputFile).then((result) => {
+        log('Finished reading input file.');
 
-      videos.length = 0;
+        // split into segments
 
-      self.postMessage({ type: 'log', message: 'Scanning CSV for ride segments...' });
+        videos.length = 0;
 
-      const startingIndex = e.data.startingIndex ? Math.max(0, parseInt(e.data.startingIndex)) : 0;
-      const endingIndex = e.data.endingIndex
-        ? Math.min(result.data.length, parseInt(e.data.endingIndex))
-        : result.data.length;
+        log('Scanning CSV for ride segments...');
 
-      let lastIndex = 0;
-      for (let i = startingIndex; i < endingIndex; i++) {
-        const prev = result.data[i - 1];
-        const data = result.data[i]!;
-        // if the time difference is more than 60 seconds, we assume a pause
-        if (prev && data[RowKey.Time] - prev[RowKey.Time] > e.data.gapThresholdSecs) {
-          const slice = result.data.slice(lastIndex, i);
+        const startingIndex = command.startingIndex ? Math.max(0, command.startingIndex) : 0;
+        const endingIndex = command.endingIndex
+          ? Math.min(result.data.length, command.endingIndex)
+          : result.data.length;
+
+        let lastIndex = 0;
+        for (let i = startingIndex; i < endingIndex; i++) {
+          const prev = result.data[i - 1];
+          const data = result.data[i]!;
+          // if the time difference is more than 60 seconds, we assume a pause
+          if (prev && data[RowKey.Time] - prev[RowKey.Time] > command.gapThresholdSecs) {
+            const slice = result.data.slice(lastIndex, i);
+            if (slice.length > 1) {
+              log(`Detected pause at ${data[RowKey.Time]}s`);
+              videos.push(new Video(slice));
+            }
+            lastIndex = i;
+          }
+        }
+
+        if (lastIndex < endingIndex) {
+          const slice = result.data.slice(lastIndex, endingIndex);
           if (slice.length > 1) {
-            self.postMessage({ type: 'log', message: `Detected pause at ${data[RowKey.Time]}s` });
             videos.push(new Video(slice));
           }
-          lastIndex = i;
         }
-      }
 
-      if (lastIndex < endingIndex) {
-        const slice = result.data.slice(lastIndex, endingIndex);
-        if (slice.length > 1) {
-          videos.push(new Video(slice));
-        }
+        log(`Found ${videos.length} segments.`);
+        log(`Will generate ${videos.reduce((sum, video) => sum + video.frameCount(command.fps), 0)} frames.`);
+      });
+      return;
+    case 'start':
+      log('Reading input file...');
+      if (!videos || videos.length === 0) {
+        log('Error: no data available to render, please load a file.');
+      } else {
+        generateVideo({
+          directoryHandle: command.outputDirectoryHandle,
+          filename: command.filename,
+          canvas: command.canvas,
+          interpolate: command.interpolate || false,
+          fps: command.fps,
+          width: command.width,
+          height: command.height,
+        });
       }
-
-      self.postMessage({ type: 'log', message: `Found ${videos.length} segments.` });
-      self.postMessage({
-        type: 'log',
-        message: `Will generate ${videos.reduce((sum, video) => sum + video.frameCount(e.data.fps), 0)} frames.`,
-      });
-    });
-  } else if (e.data.type === 'start') {
-    self.postMessage({ type: 'log', message: 'Reading input file...' });
-    if (!videos || videos.length === 0) {
-      self.postMessage({ type: 'log', message: 'Error: no data available to render, please load a file.' });
-    } else {
-      generateVideo({
-        directoryHandle: e.data.outputDirectoryHandle,
-        filename: e.data.filename,
-        canvas: e.data.canvas,
-        interpolate: e.data.interpolate || false,
-        fps: e.data.fps,
-        width: e.data.width,
-        height: e.data.height,
-      });
-    }
-  } else if (e.data.type === 'update') {
-    postUpdateMessage();
-  } else if (e.data.type === 'stop') {
-    started = false;
-    self.postMessage({ type: 'log', message: 'Stopping video generation...' });
-  } else {
-    console.warn(`Unknown message`, e.data);
+      return;
+    case 'update':
+      postUpdateMessage();
+      return;
+    case 'stop':
+      started = false;
+      log('Stopping video generation...');
+      return;
+    default:
+      console.warn(`Unknown command`, command);
   }
 });
 
 function postUpdateMessage() {
-  self.postMessage({ type: 'progress', totalFramesGenerated, totalFramesToGenerate });
+  postMessage({ type: 'progress', totalFramesGenerated, totalFramesToGenerate });
 }
 
 class Video {
@@ -238,20 +259,20 @@ async function generateVideo({
   filename,
   interpolate = false,
 }: GenerateVideoParams) {
-  self.postMessage({ type: 'log', message: 'Setting up canvas...' });
+  log('Setting up canvas...');
 
   canvas.width = width;
   canvas.height = height;
 
   const ctx = canvas.getContext('2d');
   if (!ctx) {
-    self.postMessage({ type: 'fatal', message: 'Failed to get canvas context.' });
+    fatal('Failed to get canvas context.');
     return;
   }
 
   // create encoder
 
-  self.postMessage({ type: 'log', message: 'Setting up encoder...' });
+  log('Setting up encoder...');
 
   const encoderConfig: VideoEncoderConfig = {
     codec: 'vp8',
@@ -263,10 +284,7 @@ async function generateVideo({
 
   const { supported } = await VideoEncoder.isConfigSupported(encoderConfig);
   if (!supported) {
-    self.postMessage({
-      type: 'fatal',
-      message: `The chosen options are not supported: ${JSON.stringify(encoderConfig, null, 2)}`,
-    });
+    fatal(`The chosen options are not supported: ${JSON.stringify(encoderConfig, null, 2)}`);
     return;
   }
 
@@ -276,14 +294,14 @@ async function generateVideo({
       currentWriter.webmWriter.addFrame(chunk);
     },
     error: (e) => {
-      self.postMessage({ type: 'log', message: `Encoder error: ${e.message}` });
+      log(`Encoder error: ${e.message}`);
     },
   });
   encoder.configure(encoderConfig);
 
   // render frames
 
-  self.postMessage({ type: 'log', message: `Beginning render... (interpolate: ${interpolate})` });
+  log(`Beginning render... (interpolate: ${interpolate})`);
 
   totalFramesGenerated = 0;
   totalFramesToGenerate = videos.reduce((sum, video) => sum + video.frameCount(fps), 0);
@@ -297,10 +315,7 @@ async function generateVideo({
     const video = videos[i]!;
     const baseName = `${filename} - segment_${(i + 1).toString().padStart(`${videos.length}`.length, '0')}`;
     currentWriter = await createFileHandle(directoryHandle, canvas, baseName, fps);
-    self.postMessage({
-      type: 'log',
-      message: `Rendering segment ${i + 1} (${video.frameCount(fps)} frames) into ${currentWriter.name}...`,
-    });
+    log(`Rendering segment ${i + 1} (${video.frameCount(fps)} frames) into ${currentWriter.name}...`);
 
     let frameNumber = 0;
     const startTime = video.startTime();
@@ -414,11 +429,8 @@ async function generateVideo({
   encoder.close();
 
   const duration = performance.now() - start;
-  self.postMessage({
-    type: 'log',
-    message: `Rendered ${totalFramesGenerated} frames in ${(duration / 1_000 / 60).toFixed(2)} min(s)`,
-  });
-  self.postMessage({ type: 'log', message: `Average frame time: ${(duration / totalFramesGenerated).toFixed(2)} ms` });
+  log(`Rendered ${totalFramesGenerated} frames in ${(duration / 1_000 / 60).toFixed(2)} min(s)`);
+  log(`Average frame time: ${(duration / totalFramesGenerated).toFixed(2)} ms`);
 
-  self.postMessage({ type: 'complete' });
+  postMessage({ type: 'complete', totalMilliseconds: duration });
 }
