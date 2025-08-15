@@ -2,7 +2,7 @@
   "name": "float-view",
   "private": true,
   "license": "AGPL-3.0-only",
-  "version": "0.10.31",
+  "version": "0.10.32",
   "type": "module",
   "scripts": {
     "dev": "vite",
