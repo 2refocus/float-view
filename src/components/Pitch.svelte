@@ -4,11 +4,10 @@
   import List from './List.svelte';
 
   let { data }: { data: Row } = $props();
-  // TODO: what's the difference between `true_pitch` and `pitch`?
 </script>
 
 <svg version="1.1" viewBox="0 0 100 100" role="graphics-object" xmlns="http://www.w3.org/2000/svg" height="60%">
-  <g transform-origin="center" transform="rotate({data.pitch})">
+  <g transform-origin="center" transform="rotate({data.true_pitch})">
     <path
       stroke="white"
       fill="none"
@@ -31,7 +30,7 @@
 <div class="flex flex-col justify-center items-center w-[50%] font-mono">
   <List
     items={[
-      { label: 'Pitch', value: `${formatFloat(data.pitch)}°` },
+      { label: 'Pitch', value: `${formatFloat(data.true_pitch)}°` },
       { label: 'Set point', value: `${formatFloat(data.setpoint)}°` },
     ]}
   />

@@ -83,6 +83,10 @@ export enum RowKey {
   GpsLatitude = 'gps_latitude',
   GpsLongitude = 'gps_longitude',
   MotorFault = 'motor_fault',
+  /**
+   * Pitch of the board, but this calculation is produced by heavy Mahony filtering
+   * which causes it to lag behind (especially in periods of heavy acceleration).
+   */
   Pitch = 'pitch',
   RequestedAmps = 'requested_amps',
   Roll = 'roll',
@@ -99,6 +103,10 @@ export enum RowKey {
   TempMosfet = 'temp_mosfet',
   TempMotor = 'temp_motor',
   Time = 'time',
+  /**
+   * Also pitch of the board (and also Mahony filtered) but to a much lesser degree
+   * and is less delayed.
+   */
   TruePitch = 'true_pitch',
   Voltage = 'voltage',
   Wh = 'wh',

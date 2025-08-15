@@ -121,7 +121,7 @@ export function draw({ canvas, ctx, data, images, showRemoteTilt }: DrawParams) 
     w: gaugeWidth,
     h: gaugeHeight,
     roll: data[RowKey.Roll],
-    pitch: data[RowKey.Pitch],
+    pitch: data[RowKey.TruePitch],
     setpoint: data[RowKey.Setpoint],
     setpointRemote: showRemoteTilt ? (data[RowKey.SetpointRemote] ?? 0) : undefined,
     rollImage: images['roll']!,
