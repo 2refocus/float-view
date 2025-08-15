@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { riderSvg } from './Map';
+  import riderSvg from '../assets/rider-icon.svg?raw';
   import { type Props } from './PickerFill';
   import Modal from './Modal.svelte';
   import Picker from './Picker.svelte';

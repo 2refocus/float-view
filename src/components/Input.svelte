@@ -27,7 +27,7 @@
   <label class="grow text-left truncate select-none cursor-pointer" {title} for={id}>{label}:</label>
   {#if type === 'checkbox'}
     <input
-      class="bg-slate-900 border rounded px-2 py min-w-24 cursor-pointer"
+      class="bg-slate-900 border rounded px-2 py min-w-6 cursor-pointer"
       {...rest}
       {id}
       type="checkbox"

@@ -7,6 +7,7 @@
   import { SvgImage } from './Renderer.utils';
   import rollSvg from '../assets/roll.svg?raw';
   import pitchSvg from '../assets/pitch.svg?raw';
+  import riderIconSvg from '../assets/rider-icon.svg?raw';
   import type { WorkerCommand, WorkerMessage, TypedWorker } from './Renderer.types';
 
   let elDemoContainer = $state<HTMLDivElement | null>(null);
@@ -184,34 +185,66 @@
 <Picker bind:file={inputFile} />
 
 <div class="bg-slate-900">
-  <div class="max-w-7xl p-6 space-y-8 m-auto bg-slate-900 min-h-screen">
-    <!-- Header Section -->
-    <div class="bg-amber-900/20 border border-amber-700/30 rounded-lg p-4 backdrop-blur-sm">
-      <div class="flex items-start space-x-3">
-        <div class="flex-shrink-0">
-          <svg class="h-5 w-5 text-amber-400" viewBox="0 0 20 20" fill="currentColor">
-            <path
-              fill-rule="evenodd"
-              d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-              clip-rule="evenodd"
-            />
-          </svg>
+  <div class="max-w-7xl p-6 m-auto bg-slate-900 min-h-screen">
+    <!-- Hero Section with Styled Title -->
+    <div class="text-center space-y-4 pb-2">
+      <div class="flex justify-center items-center space-x-4">
+        <div class="self-end">{@html riderIconSvg}</div>
+        <div class="relative">
+          <h1
+            class="text-6xl md:text-7xl font-black text-transparent bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text tracking-tight leading-none"
+          >
+            Float Renderer
+          </h1>
+          <div
+            class="absolute -inset-1 bg-gradient-to-r from-blue-600/20 via-purple-600/20 to-pink-600/20 blur-2xl -z-10 rounded-full"
+          ></div>
         </div>
-        <div>
-          <h3 class="text-sm font-medium text-amber-200">Experimental Feature</h3>
-          <div class="mt-1 text-sm text-amber-300/80">
-            <p>
-              This feature is currently experimental and may have bugs. Only works in Chromium-based browsers (Chrome,
-              Edge, etc.) due to File System Access API requirements.
-            </p>
-          </div>
+        <div class="scale-x-[-1] self-end">{@html riderIconSvg}</div>
+      </div>
+      <div class="relative max-w-2xl mx-auto">
+        <p class="text-xl md:text-2xl text-slate-300 font-light tracking-wide">
+          Transform your
+          <span class="text-transparent bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text font-semibold"
+            >recorded ride</span
+          >
+          into a
+          <span class="text-transparent bg-gradient-to-r from-yellow-400 to-orange-400 bg-clip-text font-semibold"
+            >realtime video</span
+          >
+        </p>
+        <div class="flex justify-center mt-4">
+          <div class="flex space-x-1"></div>
         </div>
       </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
       <!-- Left Column: Configuration -->
-      <div class="space-y-6">
+      <div class="space-y-3">
+        <!-- Header Section -->
+        <div class="bg-amber-900/20 border border-amber-700/30 rounded-lg p-4 backdrop-blur-sm">
+          <div class="flex items-start space-x-3">
+            <div class="flex-shrink-0">
+              <svg class="h-5 w-5 text-amber-400" viewBox="0 0 20 20" fill="currentColor">
+                <path
+                  fill-rule="evenodd"
+                  d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                  clip-rule="evenodd"
+                />
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-sm font-medium text-amber-200">Please Note!</h3>
+              <div class="mt-1 text-sm text-amber-300/80">
+                <p>
+                  This feature is currently experimental and may have bugs. Only works in Chromium-based browsers
+                  (Chrome, Edge, etc.) due to File System Access API requirements.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
         <!-- Action Buttons -->
         <div class="bg-slate-800/50 border border-slate-700/50 rounded-lg p-6 shadow-lg backdrop-blur-sm">
           <h2 class="text-lg font-semibold text-slate-100 mb-4">🎯 Actions</h2>
@@ -244,10 +277,29 @@
           </div>
         </div>
 
+        <!-- Progress Section -->
+        <div class="bg-slate-800/50 border border-slate-700/50 rounded-lg p-6 shadow-lg backdrop-blur-sm">
+          <h2 class="text-lg font-semibold text-slate-100 mb-4">📈 Progress</h2>
+          <div class="space-y-4">
+            <div class="space-y-2">
+              <div class="flex justify-between items-center text-sm">
+                <span class="text-slate-300">Rendering Progress</span>
+                <pre
+                  bind:this={elProgressText}
+                  class="text-xs font-mono text-slate-300 bg-slate-700/50 px-2 py-1 rounded">...</pre>
+              </div>
+              <progress
+                bind:this={elProgressBar}
+                class="w-full h-3 rounded-lg overflow-hidden bg-slate-700/50 [&::-webkit-progress-bar]:bg-slate-700/50 [&::-webkit-progress-value]:bg-blue-500 [&::-moz-progress-bar]:bg-blue-500"
+              ></progress>
+            </div>
+          </div>
+        </div>
+
         <!-- Output Settings -->
         <div class="bg-slate-800/50 border border-slate-700/50 rounded-lg p-6 shadow-lg backdrop-blur-sm">
           <h2 class="text-lg font-semibold text-slate-100 mb-4">🎬 Output Settings</h2>
-          <div class="space-y-4">
+          <div class="space-y-1">
             <Input
               id="filename"
               label="Filename (without extension)"
@@ -269,83 +321,47 @@
               placeholder={`${defaultGapThresholdSecs}`}
               onblur={(e) => (inputGapThresholdSecs = e.currentTarget.value)}
             />
-          </div>
-        </div>
-
-        <!-- Video Dimensions -->
-        <div class="bg-slate-800/50 border border-slate-700/50 rounded-lg p-6 shadow-lg backdrop-blur-sm">
-          <h2 class="text-lg font-semibold text-slate-100 mb-4">📐 Video Dimensions</h2>
-          <Input
-            id="width"
-            label="Width (px)"
-            type="number"
-            placeholder={`${defaultWidth}`}
-            onblur={(e) => (inputWidth = e.currentTarget.value)}
-          />
-          <Input
-            id="height"
-            label="Height (px)"
-            type="number"
-            placeholder={`${defaultHeight}`}
-            onblur={(e) => (inputHeight = e.currentTarget.value)}
-          />
-        </div>
-
-        <!-- Data Range -->
-        <div class="bg-slate-800/50 border border-slate-700/50 rounded-lg p-6 shadow-lg backdrop-blur-sm">
-          <h2 class="text-lg font-semibold text-slate-100 mb-4">📊 Data Range</h2>
-          <Input
-            id="startingIndex"
-            label="Starting index"
-            type="number"
-            placeholder="0"
-            onblur={(e) => (inputStartingIndex = e.currentTarget.value)}
-          />
-          <Input
-            id="endingIndex"
-            label="Ending index (0 = end of file)"
-            type="number"
-            placeholder="0"
-            onblur={(e) => (inputEndingIndex = e.currentTarget.value)}
-          />
-        </div>
-
-        <!-- Rendering Options -->
-        <div class="bg-slate-800/50 border border-slate-700/50 rounded-lg p-6 shadow-lg backdrop-blur-sm">
-          <h2 class="text-lg font-semibold text-slate-100 mb-4">⚙️ Rendering Options</h2>
-          <div class="space-y-3">
+            <Input
+              id="width"
+              label="Width (px)"
+              type="number"
+              placeholder={`${defaultWidth}`}
+              onblur={(e) => (inputWidth = e.currentTarget.value)}
+            />
+            <Input
+              id="height"
+              label="Height (px)"
+              type="number"
+              placeholder={`${defaultHeight}`}
+              onblur={(e) => (inputHeight = e.currentTarget.value)}
+            />
+            <Input
+              id="startingIndex"
+              label="Starting index"
+              type="number"
+              placeholder="0"
+              onblur={(e) => (inputStartingIndex = e.currentTarget.value)}
+            />
+            <Input
+              id="endingIndex"
+              label="Ending index (0 = end of file)"
+              type="number"
+              placeholder="0"
+              onblur={(e) => (inputEndingIndex = e.currentTarget.value)}
+            />
             <Input
               id="interpolate"
               type="checkbox"
               bind:checked={interpolate}
-              label="Interpolate between data points (smooth transitions)"
+              label="Interpolate data points (smooth transitions)"
             />
             <Input id="showRemoteTilt" type="checkbox" bind:checked={showRemoteTilt} label="Show Remote Tilt" />
           </div>
         </div>
       </div>
 
-      <!-- Right Column: Preview and Progress -->
-      <div class="space-y-6">
-        <!-- Progress Section -->
-        <div class="bg-slate-800/50 border border-slate-700/50 rounded-lg p-6 shadow-lg backdrop-blur-sm">
-          <h2 class="text-lg font-semibold text-slate-100 mb-4">📈 Progress</h2>
-          <div class="space-y-4">
-            <div class="space-y-2">
-              <div class="flex justify-between items-center text-sm">
-                <span class="text-slate-300">Rendering Progress</span>
-                <pre
-                  bind:this={elProgressText}
-                  class="text-xs font-mono text-slate-300 bg-slate-700/50 px-2 py-1 rounded">...</pre>
-              </div>
-              <progress
-                bind:this={elProgressBar}
-                class="w-full h-3 rounded-lg overflow-hidden bg-slate-700/50 [&::-webkit-progress-bar]:bg-slate-700/50 [&::-webkit-progress-value]:bg-blue-500 [&::-moz-progress-bar]:bg-blue-500"
-              ></progress>
-            </div>
-          </div>
-        </div>
-
+      <!-- Right Column -->
+      <div class="space-y-3">
         <!-- Log Output -->
         <div class="bg-slate-800/50 border border-slate-700/50 rounded-lg p-6 shadow-lg backdrop-blur-sm">
           <h2 class="text-lg font-semibold text-slate-100 mb-4">📝 Log Output</h2>

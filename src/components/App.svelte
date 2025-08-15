@@ -192,7 +192,7 @@
 
   {#if draggingFile}
     <Modal title="File drag detected!" open closable={false} {ondragleave}>
-      <div class="h-full w-full flex flex-row justify-center items-center border border-dashed border-4 rounded-2xl">
+      <div class="h-full w-full flex flex-row justify-center items-center border-dashed border-4 rounded-2xl">
         <div>{@html riderSvg}</div>
         <p>Drop your file to open it!</p>
         <div>{@html riderSvg}</div>
