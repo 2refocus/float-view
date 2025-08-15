@@ -55,6 +55,7 @@
   // when file changes, send it to the worker
   $effect(() => {
     if (inputFile) {
+      elLogOutput!.textContent = '';
       filename = inputFile.name.replace(/(\.(zip|csv|json))+$/, '');
       worker.postMessage({ type: 'file', inputFile, startingIndex, endingIndex, fps, gapThresholdSecs });
     }
