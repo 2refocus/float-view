@@ -93,8 +93,33 @@ jobs:
           npm run build -- --base=/
           zip -r ${{ steps.meta.outputs.name }}-${{ steps.meta.outputs.version }}.zip dist
 
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          # Get the latest tag (previous release)
+          prevTag=$(git tag --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n 2 | tail -n 1)
+
+          # If no previous tag exists, use the first commit
+          if [ -z "$prevTag" ]; then
+            prevTag=$(git rev-list --max-parents=0 HEAD)
+          fi
+
+          # Get commit messages since the previous tag
+          allCommits=$(git log --pretty=format:"- %s (%h)" ${prevTag}..HEAD --no-merges)
+
+          # Create release notes
+          releaseNotes="## Changes since ${prevTag}
+
+          ${allCommits}"
+
+          # Save to output (escape newlines for GitHub Actions)
+          echo "body<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$releaseNotes" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
       - name: Upload ${{ steps.meta.outputs.name }}-${{ steps.meta.outputs.version }}.zip to releases
         uses: softprops/action-gh-release@v2
         with:
           name: '${{ steps.meta.outputs.name }} ${{ github.ref_name }}'
+          body: ${{ steps.release_notes.outputs.body }}
           files: ${{ steps.meta.outputs.name }}-${{ steps.meta.outputs.version }}.zip
