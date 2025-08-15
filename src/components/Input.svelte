@@ -19,6 +19,8 @@
     class: propClass,
     ...rest
   }: Props = $props();
+
+  let alignClass = $derived(type === 'number' ? 'text-right' : 'text-left');
 </script>
 
 <div class="{inline ? 'inline-flex' : 'flex'} flex-row space-between {propClass}">
@@ -32,6 +34,6 @@
       bind:checked
     />
   {:else}
-    <input class="bg-slate-900 border rounded px-2 py min-w-24" {...rest} {id} bind:value />
+    <input class="bg-slate-900 border rounded px-2 py min-w-24 {alignClass}" {...rest} {id} bind:value />
   {/if}
 </div>

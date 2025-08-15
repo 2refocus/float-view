@@ -38,7 +38,7 @@
       id="ride-file-picker"
       class="text-center file:mr-4 file:py-2 file:px-4
       file:rounded file:border file:border-solid file:border-slate-600
-      file:text-sm file:font-bold file:bg-slate-700 active:file:bg-slate-800"
+      file:text-sm file:text-white file:font-bold file:bg-slate-700 active:file:bg-slate-800"
       type="file"
       {onchange}
       accept={supportedMimeTypeString}
