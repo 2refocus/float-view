@@ -8,6 +8,7 @@ const colors = {
   fgSubtle: '#cccccc',
   fgAlternate: '#ffcc00',
   primary: '#66ff66',
+  secondary: '#ff88aa',
   error: '#ff6666',
   inactive: '#cccccc',
 };
@@ -113,7 +114,7 @@ export function draw({ canvas, ctx, data, images, showRemoteTilt }: DrawParams) 
   });
 
   // Pitch
-  drawPitch({
+  drawBoard({
     canvas,
     ctx,
     x: padding,
@@ -186,7 +187,7 @@ interface BaseParams {
   h: number;
 }
 
-interface PitchParams extends BaseParams {
+interface BoardParams extends BaseParams {
   roll: number;
   pitch: number;
   setpoint?: number;
@@ -201,7 +202,7 @@ function getImageDimensions(image: ImageBitmap, maxSpaceLength: number): [number
   return [image.width * scale, image.height * scale];
 }
 
-function drawPitch(params: PitchParams) {
+function drawBoard(params: BoardParams) {
   const { ctx, roll, pitch, setpoint, setpointRemote, rollImage, pitchImage } = params;
 
   // pitch
@@ -233,7 +234,7 @@ function drawPitch(params: PitchParams) {
       ctx.save();
       ctx.rotate((-setpointRemote * Math.PI) / 180);
 
-      ctx.strokeStyle = colors.error;
+      ctx.strokeStyle = colors.secondary;
       ctx.beginPath();
       ctx.moveTo(x + w * 0.1 - centerX, 0);
       ctx.lineTo(x + w * 0.3 - centerX, 0);
@@ -300,8 +301,10 @@ function drawPitch(params: PitchParams) {
     ctx.fillStyle = colors.fg;
     ctx.fillText(`${roll.toFixed(2)}°`, valueX, w * f);
     ctx.fillText(`${pitch.toFixed(2)}°`, valueX, w * f * 2);
+    ctx.fillStyle = colors.primary;
     ctx.fillText(setpoint !== undefined ? `${setpoint.toFixed(2)}°` : '-', valueX, w * f * 3);
     if (setpointRemote !== undefined) {
+      ctx.fillStyle = colors.secondary;
       ctx.fillText(`${setpointRemote.toFixed(2)}°`, valueX, w * f * 4);
     }
 
