@@ -2,7 +2,7 @@ import WebMWriter from '../lib/webm-writer2.js';
 import { draw } from './Renderer.draw';
 import { RowKey, type RowWithIndex } from '../lib/parse/types.js';
 import { parse } from '../lib/parse/index.js';
-import type { WorkerCommand, WorkerMessage } from './Renderer.types.js';
+import type { WorkerCommand, WorkerCommandDef, WorkerMessage } from './Renderer.types.js';
 
 function postMessage(message: WorkerMessage) {
   self.postMessage(message);
@@ -37,7 +37,13 @@ self.addEventListener('message', (e) => {
       return;
     }
     case 'draw':
-      draw({ canvas: command.canvas, ctx: command.canvas.getContext('2d')!, data: command.data, images });
+      draw({
+        canvas: command.canvas,
+        ctx: command.canvas.getContext('2d')!,
+        data: command.data,
+        images,
+        showRemoteTilt: command.showRemoteTilt,
+      });
       return;
 
     case 'file':
@@ -87,15 +93,7 @@ self.addEventListener('message', (e) => {
       if (!videos || videos.length === 0) {
         log('Error: no data available to render, please load a file.');
       } else {
-        generateVideo({
-          directoryHandle: command.outputDirectoryHandle,
-          filename: command.filename,
-          canvas: command.canvas,
-          interpolate: command.interpolate || false,
-          fps: command.fps,
-          width: command.width,
-          height: command.height,
-        });
+        generateVideo(command);
       }
       return;
     case 'update':
@@ -225,16 +223,6 @@ function interpolateDataPoint(dataA: RowWithIndex, dataB: RowWithIndex, progress
   return interpolated;
 }
 
-interface GenerateVideoParams {
-  directoryHandle: FileSystemDirectoryHandle;
-  filename: string;
-  canvas: OffscreenCanvas;
-  interpolate?: boolean;
-  fps: number;
-  width: number;
-  height: number;
-}
-
 async function generateVideo({
   directoryHandle,
   fps,
@@ -243,7 +231,8 @@ async function generateVideo({
   canvas,
   filename,
   interpolate = false,
-}: GenerateVideoParams) {
+  showRemoteTilt = false,
+}: WorkerCommandDef['start']) {
   log('Setting up canvas...');
 
   canvas.width = width;
@@ -331,7 +320,7 @@ async function generateVideo({
           const interpolatedData = interpolateDataPoint(currentData, nextData, progress);
 
           // render interpolated frame
-          draw({ canvas, ctx, data: interpolatedData, images });
+          draw({ canvas, ctx, data: interpolatedData, images, showRemoteTilt });
 
           // render as fast as the encoder can handle (otherwise we'll OOM by generating too many frames)
           while (encoder.encodeQueueSize > backoffThreshold) {
@@ -356,7 +345,7 @@ async function generateVideo({
           return;
         }
 
-        draw({ canvas, ctx, data: lastData, images });
+        draw({ canvas, ctx, data: lastData, images, showRemoteTilt });
 
         // render as fast as the encoder can handle (otherwise we'll OOM by generating too many frames)
         while (encoder.encodeQueueSize > backoffThreshold) {
@@ -378,7 +367,7 @@ async function generateVideo({
         const timeMicros = (data[RowKey.Time] - startTime) * 1_000_000;
 
         // render frame
-        draw({ canvas, ctx, data, images });
+        draw({ canvas, ctx, data, images, showRemoteTilt });
 
         // encode frames until time is reached
         while (true) {

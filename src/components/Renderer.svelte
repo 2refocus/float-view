@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { demoFile, demoRows } from '../lib/parse/float-control';
+  import { demoFile, demoRow } from '../lib/parse/float-control';
   import Picker from './Picker.svelte';
   import Button from './Button.svelte';
   import Input from './Input.svelte';
@@ -15,6 +15,7 @@
   let elLogOutput = $state<HTMLPreElement | null>(null);
   let isRendering = $state(false);
   let interpolate = $state(false);
+  let showRemoteTilt = $state(false);
   let filename = $state('');
   let inputFile = $state<File | undefined>(import.meta.env.DEV ? demoFile : undefined);
   let inputStartingIndex = $state('');
@@ -42,6 +43,7 @@
   $effect(() => {
     width;
     height;
+    showRemoteTilt;
     drawDebug();
   });
 
@@ -113,7 +115,7 @@
       return;
     }
 
-    const outputDirectoryHandle = await window.showDirectoryPicker({
+    const directoryHandle = await window.showDirectoryPicker({
       id: 'output',
       mode: 'readwrite',
       startIn: 'videos',
@@ -121,9 +123,10 @@
 
     const canvas = document.createElement('canvas').transferControlToOffscreen();
     isRendering = true;
-    worker.postMessage({ type: 'start', outputDirectoryHandle, fps, width, height, canvas, interpolate, filename }, [
-      canvas,
-    ]);
+    worker.postMessage(
+      { type: 'start', directoryHandle, fps, width, height, canvas, interpolate, showRemoteTilt, filename },
+      [canvas],
+    );
 
     lastProgressUpdate = performance.now();
 
@@ -159,7 +162,7 @@
       canvas.height = height;
 
       const offscreen = canvas.transferControlToOffscreen();
-      worker.postMessage({ type: 'draw', canvas: offscreen, data: demoRows[124]! }, [offscreen]);
+      worker.postMessage({ type: 'draw', canvas: offscreen, data: demoRow, showRemoteTilt }, [offscreen]);
     }
   }
 
@@ -184,6 +187,7 @@
   </div>
 
   <Picker bind:file={inputFile} />
+
   <div class="flex flex-col gap-2 p-4 justify-center w-3/4 m-auto">
     <Input
       id="filename"
@@ -240,6 +244,7 @@
       bind:checked={interpolate}
       label="Interpolate between data points (smooth transitions)"
     />
+    <Input id="showRemoteTilt" type="checkbox" bind:checked={showRemoteTilt} label="Show Remote Tilt" />
     <Button onclick={() => chooseOutputAndRender()}>choose output and render!</Button>
     <Button onclick={() => stop()}>cancel</Button>
     <Button onclick={() => clear()}>clear file</Button>
@@ -247,9 +252,9 @@
       <progress bind:this={elProgressBar} class="w-full grow"></progress>
       <pre bind:this={elProgressText}>...</pre>
     </div>
-  </div>
-  <div class="flex flex-row gap-2">
-    <pre bind:this={elLogOutput} class="h-[540px] max-h-[540px] w-full p-2 grow overflow-y-auto border"></pre>
-    <div bind:this={elDemoContainer} class="relative h-[540px] border"></div>
+    <div class="flex flex-row gap-2">
+      <pre bind:this={elLogOutput} class="h-[400px] max-h-[400px] w-full p-2 grow overflow-y-auto border"></pre>
+      <div bind:this={elDemoContainer} class="relative h-[400px] border"></div>
+    </div>
   </div>
 </div>

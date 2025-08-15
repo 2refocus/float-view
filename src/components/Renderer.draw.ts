@@ -1,9 +1,36 @@
-import { RowKey, type RowWithIndex } from '../lib/parse/types';
+import { RowKey, State, type RowWithIndex } from '../lib/parse/types';
 import type { Canvas, Ctx } from './Renderer.utils';
 
 const FONT_FAMILY = 'IosevkaTerm Nerd Font, monospace';
-const COLOUR_BG = '#1e293b';
-const COLOUR_ACTIVE = '#66ff66';
+const colors = {
+  bg: '#1e293b',
+  fg: '#ffffff',
+  fgSubtle: '#cccccc',
+  fgAlternate: '#ffcc00',
+  primary: '#66ff66',
+  error: '#ff6666',
+  inactive: '#cccccc',
+};
+
+function getStateColor(state: string) {
+  switch (state as State) {
+    case State.Startup:
+      return colors.fgSubtle;
+    case State.Quickstop:
+      return colors.primary;
+    case State.StopHalf:
+      return colors.fgAlternate;
+    case State.StopFull:
+      return colors.error;
+    case State.StopAngle:
+      return colors.error;
+    case State.Wheelslip:
+      return colors.fgAlternate;
+    case State.Riding:
+    default:
+      return colors.fg;
+  }
+}
 
 interface ValueBoxConfig {
   label: string;
@@ -28,14 +55,14 @@ export interface DrawParams {
   canvas: Canvas;
   ctx: Ctx;
   data: RowWithIndex;
+  showRemoteTilt: boolean;
   images: Record<string, ImageBitmap>;
 }
 
-// TODO: show state
 // TODO: show battery cell percentage
-export function draw({ canvas, ctx, data, images }: DrawParams) {
+export function draw({ canvas, ctx, data, images, showRemoteTilt }: DrawParams) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = COLOUR_BG;
+  ctx.fillStyle = colors.bg;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   const width = canvas.width;
@@ -43,7 +70,7 @@ export function draw({ canvas, ctx, data, images }: DrawParams) {
   const padding = width * 0.025;
 
   // draw version in top left
-  ctx.fillStyle = '#aaa';
+  ctx.fillStyle = colors.fgSubtle;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
   ctx.font = getFont(Math.max(12, height * 0.025));
@@ -96,6 +123,7 @@ export function draw({ canvas, ctx, data, images }: DrawParams) {
     roll: data[RowKey.Roll],
     pitch: data[RowKey.Pitch],
     setpoint: data[RowKey.Setpoint],
+    setpointRemote: showRemoteTilt ? (data[RowKey.SetpointRemote] ?? 0) : undefined,
     rollImage: images['roll']!,
     pitchImage: images['pitch']!,
   });
@@ -111,6 +139,7 @@ export function draw({ canvas, ctx, data, images }: DrawParams) {
     adc1: data[RowKey.Adc1],
     adc2: data[RowKey.Adc2],
     speed: data[RowKey.Speed],
+    state: data[RowKey.State],
   });
 
   // Grid layout for value boxes: 3 columns, 2 rows
@@ -161,6 +190,7 @@ interface PitchParams extends BaseParams {
   roll: number;
   pitch: number;
   setpoint?: number;
+  setpointRemote?: number;
   rollImage: ImageBitmap;
   pitchImage: ImageBitmap;
 }
@@ -172,7 +202,7 @@ function getImageDimensions(image: ImageBitmap, maxSpaceLength: number): [number
 }
 
 function drawPitch(params: PitchParams) {
-  const { ctx, roll, pitch, setpoint, rollImage, pitchImage } = params;
+  const { ctx, roll, pitch, setpoint, setpointRemote, rollImage, pitchImage } = params;
 
   // pitch
   {
@@ -186,15 +216,31 @@ function drawPitch(params: PitchParams) {
 
     // setpoint indicators
     if (setpoint !== undefined) {
+      ctx.save();
       ctx.rotate((-setpoint * Math.PI) / 180);
 
-      ctx.strokeStyle = COLOUR_ACTIVE;
+      ctx.strokeStyle = colors.primary;
       ctx.beginPath();
       ctx.moveTo(x + w * 0.1 - centerX, 0);
       ctx.lineTo(x + w * 0.3 - centerX, 0);
       ctx.moveTo(x + w * 0.7 - centerX, 0);
       ctx.lineTo(x + w * 0.9 - centerX, 0);
       ctx.stroke();
+      ctx.restore();
+    }
+
+    if (setpointRemote !== undefined) {
+      ctx.save();
+      ctx.rotate((-setpointRemote * Math.PI) / 180);
+
+      ctx.strokeStyle = colors.error;
+      ctx.beginPath();
+      ctx.moveTo(x + w * 0.1 - centerX, 0);
+      ctx.lineTo(x + w * 0.3 - centerX, 0);
+      ctx.moveTo(x + w * 0.7 - centerX, 0);
+      ctx.lineTo(x + w * 0.9 - centerX, 0);
+      ctx.stroke();
+      ctx.restore();
     }
 
     // pitch visualisation
@@ -242,16 +288,22 @@ function drawPitch(params: PitchParams) {
     const f = 0.07;
     ctx.font = getFont(w * f, 'bold');
     ctx.textAlign = 'left';
-    ctx.fillStyle = '#cccccc';
+    ctx.fillStyle = colors.fgSubtle;
     ctx.fillText('Roll:', labelX, w * f);
     ctx.fillText('Pitch:', labelX, w * f * 2);
     ctx.fillText('Setpoint:', labelX, w * f * 3);
+    if (setpointRemote !== undefined) {
+      ctx.fillText('Remote:', labelX, w * f * 4);
+    }
 
     ctx.textAlign = 'right';
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = colors.fg;
     ctx.fillText(`${roll.toFixed(2)}°`, valueX, w * f);
     ctx.fillText(`${pitch.toFixed(2)}°`, valueX, w * f * 2);
     ctx.fillText(setpoint !== undefined ? `${setpoint.toFixed(2)}°` : '-', valueX, w * f * 3);
+    if (setpointRemote !== undefined) {
+      ctx.fillText(`${setpointRemote.toFixed(2)}°`, valueX, w * f * 4);
+    }
 
     ctx.restore();
   }
@@ -282,7 +334,7 @@ function drawGauge({ label, ctx, x, y, w, h, value, valueStr, unit, minValue, ma
   ctx.stroke();
 
   // Calculate value position
-  const normalizedValue = Math.max(0, Math.min(1, (value - minValue) / (maxValue - minValue)));
+  const normalizedValue = Math.max(0, Math.min(1, (Math.abs(value) - minValue) / (maxValue - minValue)));
   const valueAngle = startAngle + normalizedValue * angleRange;
 
   // Draw gauge value arc
@@ -311,17 +363,18 @@ function drawGauge({ label, ctx, x, y, w, h, value, valueStr, unit, minValue, ma
   ctx.stroke();
 
   // Draw labels
-  ctx.fillStyle = '#ffffff';
+  ctx.fillStyle = colors.fg;
   ctx.textAlign = 'center';
   ctx.font = getFont(Math.max(12, w * 0.08));
   ctx.fillText(label, centerX, y + h * 0.08);
 
+  ctx.fillStyle = value < 0 ? colors.fgAlternate : colors.fg;
   ctx.font = getFont(Math.max(16, w * 0.06), 'bold');
   ctx.fillText(`${valueStr} ${unit}`, centerX, centerY + radius * -0.2);
 
   // Draw min/max labels
   ctx.font = getFont(Math.max(10, w * 0.075));
-  ctx.fillStyle = '#cccccc';
+  ctx.fillStyle = colors.fgSubtle;
   ctx.textAlign = 'left';
   ctx.fillText(minValue.toString(), centerX - radius * 0.5, centerY + radius * 0.7);
   ctx.textAlign = 'right';
@@ -345,13 +398,13 @@ function drawValueBox({ label, ctx, x, y, w, h, value, unit }: ValueBoxParams) {
   ctx.fillRect(x, y, w, h);
 
   // Draw label
-  ctx.fillStyle = '#cccccc';
+  ctx.fillStyle = colors.fgSubtle;
   ctx.textAlign = 'center';
   ctx.font = getFont(Math.max(10, w * 0.08));
   ctx.fillText(label, x + w / 2, y + h * 0.35);
 
   // Draw value
-  ctx.fillStyle = '#ffffff';
+  ctx.fillStyle = value < 0 ? colors.fgAlternate : colors.fg;
   ctx.font = getFont(Math.max(14, w * 0.12), 'bold');
   const displayValue = Math.abs(value) < 0.1 ? value.toFixed(2) : value.toFixed(1);
   ctx.fillText(`${displayValue} ${unit}`, x + w / 2, y + h * 0.75);
@@ -361,13 +414,15 @@ interface FootpadParams extends BaseParams {
   adc1: number;
   adc2: number;
   speed: number;
+  state: string;
 }
 
 function drawFootpad(params: FootpadParams) {
-  const { ctx, adc1, adc2, speed } = params;
+  const { ctx, adc1, adc2, speed, state } = params;
 
-  const adc1Color = adc1 < 2 ? (speed < 2 ? '#aaaaaa' : '#ff0000') : COLOUR_ACTIVE;
-  const adc2Color = adc2 < 2 ? (speed < 2 ? '#aaaaaa' : '#ff0000') : COLOUR_ACTIVE;
+  const isSlow = Math.abs(speed) < 2;
+  const adc1Color = adc1 < 2 ? (isSlow ? colors.inactive : colors.error) : colors.primary;
+  const adc2Color = adc2 < 2 ? (isSlow ? colors.inactive : colors.error) : colors.primary;
 
   {
     const x = params.x;
@@ -383,15 +438,18 @@ function drawFootpad(params: FootpadParams) {
     const f = 0.07;
     ctx.font = getFont(w * f, 'bold');
     ctx.textAlign = 'left';
-    ctx.fillStyle = '#cccccc';
+    ctx.fillStyle = colors.fgSubtle;
     ctx.fillText('ADC1:', labelX, w * f);
     ctx.fillText('ADC2:', labelX, w * f * 2);
+    ctx.fillText('State:', labelX, w * f * 3);
 
     ctx.textAlign = 'right';
     ctx.fillStyle = adc1Color;
     ctx.fillText(`${adc1.toFixed(2)} V`, valueX, w * f);
     ctx.fillStyle = adc2Color;
     ctx.fillText(`${adc2.toFixed(2)} V`, valueX, w * f * 2);
+    ctx.fillStyle = getStateColor(state);
+    ctx.fillText(state, valueX, w * f * 3);
 
     ctx.restore();
   }

@@ -11,6 +11,7 @@ export type WorkerCommandDef = {
   };
   draw: {
     canvas: OffscreenCanvas;
+    showRemoteTilt: boolean;
     data: RowWithIndex;
   };
   file: {
@@ -21,10 +22,11 @@ export type WorkerCommandDef = {
     fps: number;
   };
   start: {
-    outputDirectoryHandle: FileSystemDirectoryHandle;
+    directoryHandle: FileSystemDirectoryHandle;
     filename: string;
     canvas: OffscreenCanvas;
     interpolate: boolean;
+    showRemoteTilt: boolean;
     fps: number;
     width: number;
     height: number;

@@ -89,3 +89,31 @@ export function parseFloatControlCsv(input: string | File): Promise<FloatControl
 
 export const demoFile = new File([demoCsv], 'demo.csv');
 export const demoRows = attachIndex(csv.parse<RowWithIndex>(demoCsv, parseOptions).data);
+export const demoRow: RowWithIndex = {
+  index: 0,
+  [RowKey.Adc1]: 0.02,
+  [RowKey.Adc2]: 3.08,
+  [RowKey.Ah]: 20,
+  [RowKey.Altitude]: 42,
+  [RowKey.CurrentBattery]: -10.2,
+  [RowKey.CurrentMotor]: 21.3,
+  [RowKey.Distance]: 4.5,
+  [RowKey.Duty]: 65,
+  [RowKey.GpsAccuracy]: 0,
+  [RowKey.GpsLatitude]: 0,
+  [RowKey.GpsLongitude]: 0,
+  [RowKey.MotorFault]: 0,
+  [RowKey.Pitch]: 5,
+  [RowKey.Setpoint]: 6,
+  [RowKey.SetpointRemote]: 8,
+  [RowKey.Roll]: 4,
+  [RowKey.Speed]: -25.24,
+  [RowKey.State]: State.Riding,
+  [RowKey.StateRaw]: 0,
+  [RowKey.TempMosfet]: 38.3,
+  [RowKey.TempMotor]: 33.5,
+  [RowKey.Time]: 120.5,
+  [RowKey.TruePitch]: 3.5,
+  [RowKey.Voltage]: 82,
+  [RowKey.Wh]: 0,
+};
