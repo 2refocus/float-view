@@ -217,29 +217,31 @@ function drawBoard(params: BoardParams) {
 
     // setpoint indicators
     if (setpoint !== undefined) {
+      const width = setpointRemote ? 0.1 : 0.2;
       ctx.save();
       ctx.rotate((-setpoint * Math.PI) / 180);
 
       ctx.strokeStyle = colors.primary;
       ctx.beginPath();
       ctx.moveTo(x + w * 0.1 - centerX, 0);
-      ctx.lineTo(x + w * 0.3 - centerX, 0);
-      ctx.moveTo(x + w * 0.7 - centerX, 0);
+      ctx.lineTo(x + w * (0.1 + width) - centerX, 0);
+      ctx.moveTo(x + w * (0.9 - width) - centerX, 0);
       ctx.lineTo(x + w * 0.9 - centerX, 0);
       ctx.stroke();
       ctx.restore();
     }
 
     if (setpointRemote !== undefined) {
+      const width = setpoint ? 0.1 : 0.2;
       ctx.save();
       ctx.rotate((-setpointRemote * Math.PI) / 180);
 
       ctx.strokeStyle = colors.secondary;
       ctx.beginPath();
-      ctx.moveTo(x + w * 0.1 - centerX, 0);
+      ctx.moveTo(x + w * (0.3 - width) - centerX, 0);
       ctx.lineTo(x + w * 0.3 - centerX, 0);
       ctx.moveTo(x + w * 0.7 - centerX, 0);
-      ctx.lineTo(x + w * 0.9 - centerX, 0);
+      ctx.lineTo(x + w * (0.7 + width) - centerX, 0);
       ctx.stroke();
       ctx.restore();
     }
