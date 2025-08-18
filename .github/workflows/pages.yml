@@ -96,8 +96,11 @@ jobs:
       - name: Generate release notes
         id: release_notes
         run: |
-          # Get the latest tag (previous release)
-          prevTag=$(git tag --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n 2 | tail -n 1)
+          # Get the current tag
+          currentTag=${{ github.ref_name }}
+
+          # Get the previous tag (excluding the current one)
+          prevTag=$(git tag --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | grep -v "^${currentTag}$" | head -n 1)
 
           # If no previous tag exists, use the first commit
           if [ -z "$prevTag" ]; then
