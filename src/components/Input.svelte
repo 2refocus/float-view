@@ -4,6 +4,7 @@
     id: string;
     label: string;
     inline?: boolean;
+    defaultValue?: string;
   }
 </script>
 
@@ -12,7 +13,8 @@
     id,
     label,
     type,
-    value = $bindable(),
+    defaultValue,
+    value = $bindable(defaultValue),
     checked = $bindable(),
     title = label,
     inline = false,

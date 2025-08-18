@@ -10,45 +10,74 @@
   import riderIconSvg from '../assets/rider-icon.svg?raw';
   import type { WorkerCommand, WorkerMessage, TypedWorker } from './Renderer.types';
 
-  // TODO: save some options in local storage to make things easier
-
-  let elDemoContainer = $state<HTMLDivElement | null>(null);
-  let elProgressBar = $state<HTMLProgressElement | null>(null);
-  let elProgressText = $state<HTMLPreElement | null>(null);
-  let elLogOutput = $state<HTMLPreElement | null>(null);
-  let isRendering = $state(false);
-  let interpolate = $state(false);
-  let showRemoteTilt = $state(false);
-  let use3dRenderer = $state(false);
-  let filename = $state('');
-  let inputFile = $state<File | undefined>(import.meta.env.DEV ? demoFile : undefined);
-  let inputStartingIndex = $state('');
-  let inputEndingIndex = $state('');
-  let inputFps = $state('');
-  let inputWidth = $state('');
-  let inputHeight = $state('');
-  let inputGapThresholdSecs = $state('');
-
   const defaultFps = 20;
   const defaultWidth = 1080;
   const defaultHeight = 1440;
   const defaultGapThresholdSecs = 60;
 
+  class SavedState<T> {
+    private readonly k: string;
+    public v = $state<T>(undefined as unknown as T);
+    constructor(key: string, defaultValue: T) {
+      this.k = key;
+      this.v = defaultValue;
+
+      const saved = localStorage.getItem(this.k);
+      if (saved !== null) {
+        try {
+          this.v = JSON.parse(saved);
+        } catch (e) {
+          console.warn(`Failed to parse saved state for ${this.k}:`, e);
+          this.v = defaultValue;
+        }
+      }
+
+      $effect(() => {
+        localStorage.setItem(this.k, JSON.stringify(this.v));
+      });
+    }
+  }
+
+  // DOM elements
+  let elDemoContainer = $state<HTMLDivElement | null>(null);
+  let elProgressBar = $state<HTMLProgressElement | null>(null);
+  let elProgressText = $state<HTMLPreElement | null>(null);
+  let elLogOutput = $state<HTMLPreElement | null>(null);
+
+  // state
+  let isRendering = $state(false);
+
+  // saved user input
+  let interpolate = new SavedState('interpolate', false);
+  let showRemoteTilt = new SavedState('showRemoteTilt', false);
+  let use3dRenderer = new SavedState('use3dRenderer', false);
+  let inputFps = new SavedState('inputFps', '');
+  let inputWidth = new SavedState('inputWidth', '');
+  let inputHeight = new SavedState('inputHeight', '');
+  let inputGapThresholdSecs = new SavedState('inputGapThresholdSecs', '');
+
+  // other user input
+  let filename = $state('');
+  let inputFile = $state<File | undefined>(import.meta.env.DEV ? demoFile : undefined);
+  let inputStartingIndex = $state('');
+  let inputEndingIndex = $state('');
+
+  // derived values
   let startingIndex = $derived(inputStartingIndex ? parseInt(inputStartingIndex, 10) : 0);
   let endingIndex = $derived(inputEndingIndex ? parseInt(inputEndingIndex, 10) : 0);
-  let fps = $derived(inputFps ? parseInt(inputFps, 10) : defaultFps);
-  let width = $derived(inputWidth ? parseInt(inputWidth, 10) : defaultWidth);
-  let height = $derived(inputHeight ? parseInt(inputHeight, 10) : defaultHeight);
+  let fps = $derived(inputFps.v ? parseInt(inputFps.v, 10) : defaultFps);
+  let width = $derived(inputWidth.v ? parseInt(inputWidth.v, 10) : defaultWidth);
+  let height = $derived(inputHeight.v ? parseInt(inputHeight.v, 10) : defaultHeight);
   let gapThresholdSecs = $derived(
-    inputGapThresholdSecs ? parseInt(inputGapThresholdSecs, 10) : defaultGapThresholdSecs,
+    inputGapThresholdSecs ? parseInt(inputGapThresholdSecs.v, 10) : defaultGapThresholdSecs,
   );
 
   // when relevant values change, update debug
   $effect(() => {
     width;
     height;
-    showRemoteTilt;
-    use3dRenderer;
+    showRemoteTilt.v;
+    use3dRenderer.v;
     drawDebug();
   });
 
@@ -137,9 +166,9 @@
         width,
         height,
         canvas,
-        interpolate,
-        showRemoteTilt,
-        use3dRenderer,
+        interpolate: interpolate.v,
+        showRemoteTilt: showRemoteTilt.v,
+        use3dRenderer: use3dRenderer.v,
         filename,
       },
       [canvas],
@@ -179,9 +208,16 @@
       canvas.height = height;
 
       const offscreen = canvas.transferControlToOffscreen();
-      worker.postMessage({ type: 'draw', canvas: offscreen, data: demoRow, showRemoteTilt, use3dRenderer }, [
-        offscreen,
-      ]);
+      worker.postMessage(
+        {
+          type: 'draw',
+          canvas: offscreen,
+          data: demoRow,
+          showRemoteTilt: showRemoteTilt.v,
+          use3dRenderer: use3dRenderer.v,
+        },
+        [offscreen],
+      );
     }
   }
 
@@ -328,29 +364,33 @@
               id="fps"
               label="FPS"
               type="number"
+              defaultValue={inputFps.v}
               placeholder={`${defaultFps}`}
-              onblur={(e) => (inputFps = e.currentTarget.value)}
+              onblur={(e) => (inputFps.v = e.currentTarget.value)}
             />
             <Input
               id="gapThresholdSecs"
               label="Gap threshold (seconds)"
               type="number"
+              defaultValue={inputGapThresholdSecs.v}
               placeholder={`${defaultGapThresholdSecs}`}
-              onblur={(e) => (inputGapThresholdSecs = e.currentTarget.value)}
+              onblur={(e) => (inputGapThresholdSecs.v = e.currentTarget.value)}
             />
             <Input
               id="width"
               label="Width (px)"
               type="number"
+              defaultValue={inputWidth.v}
               placeholder={`${defaultWidth}`}
-              onblur={(e) => (inputWidth = e.currentTarget.value)}
+              onblur={(e) => (inputWidth.v = e.currentTarget.value)}
             />
             <Input
               id="height"
               label="Height (px)"
               type="number"
+              defaultValue={inputHeight.v}
               placeholder={`${defaultHeight}`}
-              onblur={(e) => (inputHeight = e.currentTarget.value)}
+              onblur={(e) => (inputHeight.v = e.currentTarget.value)}
             />
             <Input
               id="startingIndex"
@@ -369,11 +409,16 @@
             <Input
               id="interpolate"
               type="checkbox"
-              bind:checked={interpolate}
+              bind:checked={interpolate.v}
               label="Interpolate data points (smooth transitions)"
             />
-            <Input id="showRemoteTilt" type="checkbox" bind:checked={showRemoteTilt} label="Show Remote Tilt" />
-            <Input id="use3dRenderer" type="checkbox" bind:checked={use3dRenderer} label="3D Renderer (experimental)" />
+            <Input id="showRemoteTilt" type="checkbox" bind:checked={showRemoteTilt.v} label="Show Remote Tilt" />
+            <Input
+              id="use3dRenderer"
+              type="checkbox"
+              bind:checked={use3dRenderer.v}
+              label="3D Renderer (experimental)"
+            />
           </div>
         </div>
       </div>
