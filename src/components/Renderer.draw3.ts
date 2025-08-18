@@ -3,29 +3,64 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { RowKey } from '../lib/parse/types';
 import type { CreateRenderer } from './Renderer.types';
 
+interface TextElement {
+  text: string;
+  x: number;
+  y: number;
+  fontSize?: number;
+  color?: string;
+  align?: 'left' | 'center' | 'right';
+  baseline?: 'top' | 'middle' | 'bottom';
+}
+
 function createReusableTextTexture(
-  fontSize: number,
-  color: string,
+  canvasWidth: number,
+  canvasHeight: number,
+  defaultFontSize: number = 32,
+  defaultColor: string = '#ffffff',
 ): {
   texture: THREE.Texture;
-  updateText: (text: string) => void;
+  updateText: (elements: TextElement[]) => void;
 } {
-  const canvas = new OffscreenCanvas(256, 128);
+  const canvas = new OffscreenCanvas(canvasWidth, canvasHeight);
   const ctx = canvas.getContext('2d')!;
   const texture = new THREE.CanvasTexture(canvas);
 
-  const updateText = (text: string) => {
-    // Clear canvas
+  // Set texture properties for proper rendering
+  texture.flipY = false;
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+
+  const updateText = (elements: TextElement[]) => {
+    // Clear canvas with transparent background
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Set text properties
-    ctx.font = `${fontSize}px IosevkaTerm Nerd Font, monospace`;
-    ctx.fillStyle = color;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
+    // Save the current context state
+    ctx.save();
 
-    // Add text to canvas
-    ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+    // Flip the canvas vertically to fix upside-down text
+    ctx.scale(1, -1);
+    ctx.translate(0, -canvas.height);
+
+    // Draw each text element
+    elements.forEach((element) => {
+      const fontSize = element.fontSize ?? defaultFontSize;
+      const color = element.color ?? defaultColor;
+      const align = element.align ?? 'left';
+      const baseline = element.baseline ?? 'top';
+
+      // Set text properties
+      ctx.font = `${fontSize}px Arial, sans-serif`;
+      ctx.fillStyle = color;
+      ctx.textAlign = align;
+      ctx.textBaseline = baseline;
+
+      // Now we can use the original Y coordinate since we've flipped the canvas
+      ctx.fillText(element.text, element.x, element.y);
+    });
+
+    // Restore the context state
+    ctx.restore();
 
     // Mark texture as needing update
     texture.needsUpdate = true;
@@ -186,6 +221,10 @@ function loadModels() {
 // TODO: temperature/current/voltage stats
 // TODO: version
 export const create3dRenderer: CreateRenderer = async (canvas, { showRemoteTilt }, sendProgressUpdate) => {
+  //
+  // Load models and setup scene
+  //
+
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x2c3e50); // Dark blue-gray background
   const camera = new THREE.PerspectiveCamera(75, canvas.width / canvas.height, 0.1, 1000);
@@ -227,12 +266,33 @@ export const create3dRenderer: CreateRenderer = async (canvas, { showRemoteTilt 
   camera.position.set(0.5, 0.3, 0.6);
   camera.lookAt(0, 0, 0);
 
-  // Create reusable text texture system for dynamic updates
-  const { texture: textTexture, updateText } = createReusableTextTexture(32, '#ffffff');
-  const textMaterial = new THREE.SpriteMaterial({ map: textTexture });
-  const textSprite = new THREE.Sprite(textMaterial);
-  scene.add(textSprite);
-  updateText('Hello World');
+  //
+  // Setup orthographic camera for text overlay
+  //
+
+  const textScene = new THREE.Scene();
+  const textCamera = new THREE.OrthographicCamera(0, canvas.width, canvas.height, 0, -1, 1);
+  const { texture: textTexture, updateText } = createReusableTextTexture(canvas.width, canvas.height);
+  {
+    // Create a plane geometry that covers the entire screen
+    const textGeometry = new THREE.PlaneGeometry(canvas.width, canvas.height);
+    const textMaterial = new THREE.MeshBasicMaterial({
+      map: textTexture,
+      transparent: true,
+      depthTest: false, // Always render on top
+      depthWrite: false, // Don't write to depth buffer
+    });
+    const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+
+    // Position the UI plane
+    textMesh.position.set(canvas.width / 2, canvas.height / 2, 0);
+    textScene.add(textMesh);
+  }
+  renderer.autoClear = false;
+
+  //
+  // Renderer
+  //
 
   return {
     close: () => {
@@ -240,35 +300,61 @@ export const create3dRenderer: CreateRenderer = async (canvas, { showRemoteTilt 
       renderer.forceContextLoss();
     },
     draw: (data) => {
-      // Convert degrees to radians and apply pitch and roll rotations
-      const pitchRadians = THREE.MathUtils.degToRad(data[RowKey.TruePitch]);
-      const rollRadians = THREE.MathUtils.degToRad(data[RowKey.Roll]);
-
-      // Apply pitch and roll rotations using quaternions to avoid gimbal lock
-      const rollQuaternion = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), rollRadians);
-      const pitchQuaternion = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), pitchRadians);
-
-      // Combine the rotations: apply pitch first, then roll
-      const combinedQuaternion = new THREE.Quaternion().multiplyQuaternions(rollQuaternion, pitchQuaternion);
-
-      // Set the absolute rotation (don't accumulate)
-      boardContainer.quaternion.copy(combinedQuaternion);
-
       {
-        const pitch = data[RowKey.TruePitch].toFixed(1);
-        const roll = data[RowKey.Roll].toFixed(1);
-        updateText(`P: ${pitch}° R: ${roll}°`);
+        const pitchRadians = THREE.MathUtils.degToRad(data[RowKey.TruePitch]);
+        const rollRadians = THREE.MathUtils.degToRad(data[RowKey.Roll]);
 
-        // Position text sprite in top right corner of viewport
-        // Use a much simpler approach - position relative to camera with fixed offset
-        const cameraDirection = new THREE.Vector3();
-        camera.getWorldDirection(cameraDirection);
-        textSprite.position.copy(camera.position);
-        textSprite.position.add(cameraDirection.multiplyScalar(1));
-        textSprite.position.add(cameraDirection.add(new THREE.Vector3(0, 1, 0)));
+        // Apply pitch and roll rotations using quaternions to avoid gimbal lock
+        const rollQuaternion = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), rollRadians);
+        const pitchQuaternion = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), pitchRadians);
+
+        // Combine the rotations: apply pitch first, then roll
+        const combinedQuaternion = new THREE.Quaternion().multiplyQuaternions(rollQuaternion, pitchQuaternion);
+
+        boardContainer.quaternion.copy(combinedQuaternion);
       }
 
+      {
+        updateText([
+          // Title in top-left
+          { text: 'Float View 3D', x: 50, y: 50, fontSize: 32, color: '#ffffff', align: 'left', baseline: 'top' },
+          // Pitch and Roll in top-right
+          {
+            text: `Pitch: ${data[RowKey.TruePitch].toFixed(1)}°`,
+            x: canvas.width - 50,
+            y: 50,
+            fontSize: 24,
+            color: '#00ff00',
+            align: 'right',
+            baseline: 'top',
+          },
+          {
+            text: `Roll: ${data[RowKey.Roll].toFixed(1)}°`,
+            x: canvas.width - 50,
+            y: 90,
+            fontSize: 24,
+            color: '#0080ff',
+            align: 'right',
+            baseline: 'top',
+          },
+          // Version in bottom middle
+          {
+            text: import.meta.env.VITE_BUILD_VERSION,
+            x: canvas.width / 2,
+            y: canvas.height - 50,
+            fontSize: 32,
+            color: '#555',
+            align: 'center',
+            baseline: 'bottom',
+          },
+        ]);
+      }
+
+      // render main scene
+      renderer.clear();
       renderer.render(scene, camera);
+      // render text scene on top
+      renderer.render(textScene, textCamera);
     },
   };
 };

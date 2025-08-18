@@ -69,7 +69,7 @@
   let width = $derived(inputWidth.v ? parseInt(inputWidth.v, 10) : defaultWidth);
   let height = $derived(inputHeight.v ? parseInt(inputHeight.v, 10) : defaultHeight);
   let gapThresholdSecs = $derived(
-    inputGapThresholdSecs ? parseInt(inputGapThresholdSecs.v, 10) : defaultGapThresholdSecs,
+    inputGapThresholdSecs.v ? parseInt(inputGapThresholdSecs.v, 10) : defaultGapThresholdSecs,
   );
 
   // when relevant values change, update debug
