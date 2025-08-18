@@ -1,8 +1,9 @@
 import WebMWriter from '../lib/webm-writer2.js';
-import { draw } from './Renderer.draw';
+import { create2dRenderer } from './Renderer.draw';
 import { RowKey, type RowWithIndex } from '../lib/parse/types.js';
 import { parse } from '../lib/parse/index.js';
-import type { WorkerCommand, WorkerCommandDef, WorkerMessage } from './Renderer.types.js';
+import type { WorkerCommand, WorkerCommandDef, WorkerMessage, Renderer, RendererOptions } from './Renderer.types.js';
+import { create3dRenderer } from './Renderer.draw3.js';
 
 function postMessage(message: WorkerMessage) {
   self.postMessage(message);
@@ -27,7 +28,21 @@ function fatal(message: string) {
   console.error(message);
 }
 
-self.addEventListener('message', (e) => {
+function rendererInitProgress(pct: number, msg: string) {
+  postMessage({ type: 'log', message: `Renderer init progress: ${(pct * 100).toFixed(0)}% - ${msg}` });
+}
+
+async function createRenderer(canvas: OffscreenCanvas, options: RendererOptions, use3dRenderer: boolean) {
+  const renderer = await (use3dRenderer
+    ? create3dRenderer(canvas, options, rendererInitProgress)
+    : create2dRenderer(canvas, options, rendererInitProgress));
+
+  rendererInitProgress(1, 'Renderer initialized');
+  return renderer;
+}
+
+let renderer: Renderer | null = null;
+self.addEventListener('message', async (e) => {
   const command = e.data as WorkerCommand;
   switch (command.type) {
     case 'image': {
@@ -36,15 +51,22 @@ self.addEventListener('message', (e) => {
       images[name] = image;
       return;
     }
-    case 'draw':
-      draw({
-        canvas: command.canvas,
-        ctx: command.canvas.getContext('2d')!,
-        data: command.data,
-        images,
-        showRemoteTilt: command.showRemoteTilt,
-      });
+
+    case 'draw': {
+      if (renderer) {
+        renderer.close();
+        renderer = null;
+      }
+
+      renderer = await createRenderer(
+        command.canvas,
+        { showRemoteTilt: command.showRemoteTilt, images },
+        command.use3dRenderer,
+      );
+
+      renderer.draw(command.data);
       return;
+    }
 
     case 'file':
       log('Reading input file...');
@@ -230,6 +252,7 @@ async function generateVideo({
   height,
   canvas,
   filename,
+  use3dRenderer,
   interpolate = false,
   showRemoteTilt = false,
 }: WorkerCommandDef['start']) {
@@ -237,12 +260,6 @@ async function generateVideo({
 
   canvas.width = width;
   canvas.height = height;
-
-  const ctx = canvas.getContext('2d');
-  if (!ctx) {
-    fatal('Failed to get canvas context.');
-    return;
-  }
 
   // create encoder
 
@@ -284,6 +301,8 @@ async function generateVideo({
 
   const backoffThreshold = fps * 2;
 
+  const renderer = await createRenderer(canvas, { showRemoteTilt, images }, use3dRenderer);
+
   started = true;
   for (let i = 0; i < videos.length; i++) {
     const video = videos[i]!;
@@ -320,7 +339,8 @@ async function generateVideo({
           const interpolatedData = interpolateDataPoint(currentData, nextData, progress);
 
           // render interpolated frame
-          draw({ canvas, ctx, data: interpolatedData, images, showRemoteTilt });
+          renderer.draw(interpolatedData);
+          await new Promise((resolve) => requestAnimationFrame(resolve));
 
           // render as fast as the encoder can handle (otherwise we'll OOM by generating too many frames)
           while (encoder.encodeQueueSize > backoffThreshold) {
@@ -345,7 +365,8 @@ async function generateVideo({
           return;
         }
 
-        draw({ canvas, ctx, data: lastData, images, showRemoteTilt });
+        renderer.draw(lastData);
+        await new Promise((resolve) => requestAnimationFrame(resolve));
 
         // render as fast as the encoder can handle (otherwise we'll OOM by generating too many frames)
         while (encoder.encodeQueueSize > backoffThreshold) {
@@ -367,7 +388,8 @@ async function generateVideo({
         const timeMicros = (data[RowKey.Time] - startTime) * 1_000_000;
 
         // render frame
-        draw({ canvas, ctx, data, images, showRemoteTilt });
+        renderer.draw(data);
+        await new Promise((resolve) => requestAnimationFrame(resolve));
 
         // encode frames until time is reached
         while (true) {
@@ -401,6 +423,7 @@ async function generateVideo({
   }
 
   encoder.close();
+  renderer.close();
 
   const duration = performance.now() - start;
   log(`Rendered ${totalFramesGenerated} frames in ${(duration / 1_000 / 60).toFixed(2)} min(s)`);

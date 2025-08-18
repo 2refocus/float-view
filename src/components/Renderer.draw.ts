@@ -1,4 +1,5 @@
 import { RowKey, State, type RowWithIndex } from '../lib/parse/types';
+import type { CreateRenderer } from './Renderer.types';
 import type { Canvas, Ctx } from './Renderer.utils';
 
 const FONT_FAMILY = 'IosevkaTerm Nerd Font, monospace';
@@ -60,8 +61,16 @@ export interface DrawParams {
   images: Record<string, ImageBitmap>;
 }
 
+export const create2dRenderer: CreateRenderer = async (canvas, { showRemoteTilt, images }) => {
+  const ctx = canvas.getContext('2d')!;
+  return {
+    close: () => {},
+    draw: (data: RowWithIndex) => draw({ canvas, ctx, data, showRemoteTilt, images }),
+  };
+};
+
 // TODO: show battery cell percentage
-export function draw({ canvas, ctx, data, images, showRemoteTilt }: DrawParams) {
+function draw({ canvas, ctx, data, images, showRemoteTilt }: DrawParams) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = colors.bg;
   ctx.fillRect(0, 0, canvas.width, canvas.height);

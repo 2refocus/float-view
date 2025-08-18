@@ -17,6 +17,7 @@
   let isRendering = $state(false);
   let interpolate = $state(false);
   let showRemoteTilt = $state(false);
+  let use3dRenderer = $state(false);
   let filename = $state('');
   let inputFile = $state<File | undefined>(import.meta.env.DEV ? demoFile : undefined);
   let inputStartingIndex = $state('');
@@ -45,6 +46,7 @@
     width;
     height;
     showRemoteTilt;
+    use3dRenderer;
     drawDebug();
   });
 
@@ -126,7 +128,18 @@
     const canvas = document.createElement('canvas').transferControlToOffscreen();
     isRendering = true;
     worker.postMessage(
-      { type: 'start', directoryHandle, fps, width, height, canvas, interpolate, showRemoteTilt, filename },
+      {
+        type: 'start',
+        directoryHandle,
+        fps,
+        width,
+        height,
+        canvas,
+        interpolate,
+        showRemoteTilt,
+        use3dRenderer,
+        filename,
+      },
       [canvas],
     );
 
@@ -164,7 +177,9 @@
       canvas.height = height;
 
       const offscreen = canvas.transferControlToOffscreen();
-      worker.postMessage({ type: 'draw', canvas: offscreen, data: demoRow, showRemoteTilt }, [offscreen]);
+      worker.postMessage({ type: 'draw', canvas: offscreen, data: demoRow, showRemoteTilt, use3dRenderer }, [
+        offscreen,
+      ]);
     }
   }
 
@@ -356,6 +371,7 @@
               label="Interpolate data points (smooth transitions)"
             />
             <Input id="showRemoteTilt" type="checkbox" bind:checked={showRemoteTilt} label="Show Remote Tilt" />
+            <Input id="use3dRenderer" type="checkbox" bind:checked={use3dRenderer} label="3D Renderer (experimental)" />
           </div>
         </div>
       </div>

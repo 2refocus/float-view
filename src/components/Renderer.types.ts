@@ -12,6 +12,7 @@ export type WorkerCommandDef = {
   draw: {
     canvas: OffscreenCanvas;
     showRemoteTilt: boolean;
+    use3dRenderer: boolean;
     data: RowWithIndex;
   };
   file: {
@@ -27,6 +28,7 @@ export type WorkerCommandDef = {
     canvas: OffscreenCanvas;
     interpolate: boolean;
     showRemoteTilt: boolean;
+    use3dRenderer: boolean;
     fps: number;
     width: number;
     height: number;
@@ -88,3 +90,21 @@ interface TypedWorkerCreator<C, M> {
 }
 
 export interface TypedWorker<C, M> extends TypedWorkerCreator<C, M>, Omit<Worker, keyof TypedWorkerCreator<C, M>> {}
+
+/*
+ * Render interface
+ */
+
+export interface RendererOptions {
+  showRemoteTilt: boolean;
+  images: Record<string, ImageBitmap>;
+}
+export type CreateRenderer = (
+  canvas: OffscreenCanvas,
+  options: RendererOptions,
+  sendProgressUpdate: (pct: number, msg: string) => void,
+) => Promise<Renderer>;
+export interface Renderer {
+  draw(data: RowWithIndex): void;
+  close(): void;
+}
