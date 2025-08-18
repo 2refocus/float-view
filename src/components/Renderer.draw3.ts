@@ -237,7 +237,7 @@ export const create3dRenderer: CreateRenderer = async (canvas, { showRemoteTilt 
   return {
     close: () => {
       renderer.dispose();
-      _boardModel = null;
+      renderer.forceContextLoss();
     },
     draw: (data) => {
       // Convert degrees to radians and apply pitch and roll rotations
