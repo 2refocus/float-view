@@ -10,6 +10,8 @@
   import riderIconSvg from '../assets/rider-icon.svg?raw';
   import type { WorkerCommand, WorkerMessage, TypedWorker } from './Renderer.types';
 
+  // TODO: save some options in local storage to make things easier
+
   let elDemoContainer = $state<HTMLDivElement | null>(null);
   let elProgressBar = $state<HTMLProgressElement | null>(null);
   let elProgressText = $state<HTMLPreElement | null>(null);

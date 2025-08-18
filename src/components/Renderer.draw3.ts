@@ -3,6 +3,37 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { RowKey } from '../lib/parse/types';
 import type { CreateRenderer } from './Renderer.types';
 
+function createReusableTextTexture(
+  fontSize: number,
+  color: string,
+): {
+  texture: THREE.Texture;
+  updateText: (text: string) => void;
+} {
+  const canvas = new OffscreenCanvas(256, 128);
+  const ctx = canvas.getContext('2d')!;
+  const texture = new THREE.CanvasTexture(canvas);
+
+  const updateText = (text: string) => {
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Set text properties
+    ctx.font = `${fontSize}px IosevkaTerm Nerd Font, monospace`;
+    ctx.fillStyle = color;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    // Add text to canvas
+    ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+
+    // Mark texture as needing update
+    texture.needsUpdate = true;
+  };
+
+  return { texture, updateText };
+}
+
 function textureTreads(size: number = 256, lineWidth: number = 6, spacing: number = 48): THREE.Texture {
   const canvas = new OffscreenCanvas(size, size);
   const ctx = canvas.getContext('2d')!;
@@ -196,6 +227,13 @@ export const create3dRenderer: CreateRenderer = async (canvas, { showRemoteTilt 
   camera.position.set(0.5, 0.3, 0.6);
   camera.lookAt(0, 0, 0);
 
+  // Create reusable text texture system for dynamic updates
+  const { texture: textTexture, updateText } = createReusableTextTexture(32, '#ffffff');
+  const textMaterial = new THREE.SpriteMaterial({ map: textTexture });
+  const textSprite = new THREE.Sprite(textMaterial);
+  scene.add(textSprite);
+  updateText('Hello World');
+
   return {
     close: () => {
       renderer.dispose();
@@ -215,6 +253,20 @@ export const create3dRenderer: CreateRenderer = async (canvas, { showRemoteTilt 
 
       // Set the absolute rotation (don't accumulate)
       boardContainer.quaternion.copy(combinedQuaternion);
+
+      {
+        const pitch = data[RowKey.TruePitch].toFixed(1);
+        const roll = data[RowKey.Roll].toFixed(1);
+        updateText(`P: ${pitch}° R: ${roll}°`);
+
+        // Position text sprite in top right corner of viewport
+        // Use a much simpler approach - position relative to camera with fixed offset
+        const cameraDirection = new THREE.Vector3();
+        camera.getWorldDirection(cameraDirection);
+        textSprite.position.copy(camera.position);
+        textSprite.position.add(cameraDirection.multiplyScalar(1));
+        textSprite.position.add(cameraDirection.add(new THREE.Vector3(0, 1, 0)));
+      }
 
       renderer.render(scene, camera);
     },
