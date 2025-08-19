@@ -23,7 +23,6 @@ async function createRenderer(canvas: OffscreenCanvas, options: RendererOptions,
     ? create3dRenderer(canvas, options, rendererInitProgress)
     : create2dRenderer(canvas, options, rendererInitProgress));
 
-  rendererInitProgress(1, 'Renderer initialized');
   return renderer;
 }
 

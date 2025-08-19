@@ -101,10 +101,11 @@ export interface RendererOptions {
   showRemoteTilt: boolean;
   images: Record<string, ImageBitmap>;
 }
+export type SendProgressUpdate = (progress: number, message: string) => void;
 export type CreateRenderer = (
   canvas: OffscreenCanvas,
   options: RendererOptions,
-  sendProgressUpdate: (pct: number, msg: string) => void,
+  sendProgressUpdate: SendProgressUpdate,
 ) => Promise<Renderer>;
 export interface Renderer {
   draw(data: RowWithIndex): Promise<void>;

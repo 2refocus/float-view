@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { RowKey } from '../../lib/parse/types';
-import type { CreateRenderer } from './types';
+import type { CreateRenderer, SendProgressUpdate } from './types';
 import boardGlbUrl from '../../assets/board.glb?url';
 
 interface TextElement {
@@ -150,11 +150,12 @@ function generateUVMapping(mesh: THREE.Mesh) {
 }
 
 let _boardModel: THREE.Group | null = null;
-function loadModels() {
+function loadModels(sendProgressUpdate: SendProgressUpdate) {
   if (_boardModel) {
     return Promise.resolve({ boardModel: _boardModel.clone() });
   }
 
+  sendProgressUpdate(0.1, 'Loading board model');
   console.time('loadBoardModel');
   const loader = new GLTFLoader();
   return new Promise<{ boardModel: THREE.Group }>((resolve, reject) => {
@@ -244,9 +245,8 @@ export const create3dRenderer: CreateRenderer = async (canvas, { showRemoteTilt 
   directionalLight2.position.set(-5, 2, -5);
   scene.add(directionalLight2);
 
-  // board mesh - load asynchronously but store reference
-  sendProgressUpdate(0.1, 'Loading board model');
-  const { boardModel } = await loadModels();
+  // board mesh - load asynchronously but store reference;
+  const { boardModel } = await loadModels(sendProgressUpdate);
 
   // Create a container for the board model to handle centering
   const boardContainer = new THREE.Group();

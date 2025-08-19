@@ -13,8 +13,8 @@ export function fatal(message: string) {
   console.error(message);
 }
 
-export function rendererInitProgress(pct: number, msg: string) {
-  postMessage({ type: 'log', message: `Renderer init progress: ${(pct * 100).toFixed(0)}% - ${msg}` });
+export function rendererInitProgress(_pct: number, msg: string) {
+  postMessage({ type: 'log', message: `Initialising renderer: ${msg}...` });
 }
 
 export function postUpdateMessage(args: WorkerMessageDef['progress']) {
