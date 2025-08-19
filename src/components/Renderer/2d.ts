@@ -225,7 +225,7 @@ function drawBoard(params: BoardParams) {
     ctx.translate(centerX, centerY);
 
     const drawSetpoint = setpoint !== undefined;
-    const drawSetpointRemote = setpointRemote !== undefined;
+    const drawSetpointRemote = setpointRemote !== undefined && setpointRemote !== 0;
 
     // setpoint indicators
     if (drawSetpoint) {
