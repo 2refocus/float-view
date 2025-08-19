@@ -105,6 +105,6 @@ export type CreateRenderer = (
   sendProgressUpdate: (pct: number, msg: string) => void,
 ) => Promise<Renderer>;
 export interface Renderer {
-  draw(data: RowWithIndex): void;
+  draw(data: RowWithIndex): Promise<void>;
   close(): void;
 }

@@ -65,7 +65,7 @@ export const create2dRenderer: CreateRenderer = async (canvas, { showRemoteTilt,
   const ctx = canvas.getContext('2d')!;
   return {
     close: () => {},
-    draw: (data: RowWithIndex) => draw({ canvas, ctx, data, showRemoteTilt, images }),
+    draw: (data: RowWithIndex) => Promise.resolve(draw({ canvas, ctx, data, showRemoteTilt, images })),
   };
 };
 

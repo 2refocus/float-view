@@ -339,8 +339,7 @@ async function generateVideo({
           const interpolatedData = interpolateDataPoint(currentData, nextData, progress);
 
           // render interpolated frame
-          renderer.draw(interpolatedData);
-          await new Promise((resolve) => requestAnimationFrame(resolve));
+          await renderer.draw(interpolatedData);
 
           // render as fast as the encoder can handle (otherwise we'll OOM by generating too many frames)
           while (encoder.encodeQueueSize > backoffThreshold) {
@@ -365,8 +364,7 @@ async function generateVideo({
           return;
         }
 
-        renderer.draw(lastData);
-        await new Promise((resolve) => requestAnimationFrame(resolve));
+        await renderer.draw(lastData);
 
         // render as fast as the encoder can handle (otherwise we'll OOM by generating too many frames)
         while (encoder.encodeQueueSize > backoffThreshold) {
@@ -385,11 +383,10 @@ async function generateVideo({
       // Original mode: repeat the same frame until the next data point
       for (let j = 0; j < video.csvData.length; j++) {
         const data = video.csvData[j]!;
-        const timeMicros = (data[RowKey.Time] - startTime) * 1_000_000;
+        const stopTime = video.csvData[j + 1]?.[RowKey.Time] ?? frameNumber * frameDurationMicros + 1_000_000;
 
         // render frame
-        renderer.draw(data);
-        await new Promise((resolve) => requestAnimationFrame(resolve));
+        await renderer.draw(data);
 
         // encode frames until time is reached
         while (true) {
@@ -410,7 +407,7 @@ async function generateVideo({
           frameNumber++;
           totalFramesGenerated++;
 
-          if (frameTime >= timeMicros) {
+          if (frameTime >= stopTime) {
             break;
           }
         }

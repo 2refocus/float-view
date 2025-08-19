@@ -299,7 +299,7 @@ export const create3dRenderer: CreateRenderer = async (canvas, { showRemoteTilt 
       renderer.dispose();
       renderer.forceContextLoss();
     },
-    draw: (data) => {
+    draw: async (data) => {
       {
         const pitchRadians = THREE.MathUtils.degToRad(data[RowKey.TruePitch]);
         const rollRadians = THREE.MathUtils.degToRad(data[RowKey.Roll]);
@@ -355,6 +355,8 @@ export const create3dRenderer: CreateRenderer = async (canvas, { showRemoteTilt 
       renderer.render(scene, camera);
       // render text scene on top
       renderer.render(textScene, textCamera);
+
+      await new Promise((resolve) => requestAnimationFrame(resolve));
     },
   };
 };
