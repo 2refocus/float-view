@@ -224,9 +224,12 @@ function drawBoard(params: BoardParams) {
     ctx.save();
     ctx.translate(centerX, centerY);
 
+    const drawSetpoint = setpoint !== undefined;
+    const drawSetpointRemote = setpointRemote !== undefined;
+
     // setpoint indicators
-    if (setpoint !== undefined) {
-      const width = setpointRemote ? 0.1 : 0.2;
+    if (drawSetpoint) {
+      const width = drawSetpointRemote ? 0.1 : 0.2;
       ctx.save();
       ctx.rotate((-setpoint * Math.PI) / 180);
 
@@ -240,8 +243,8 @@ function drawBoard(params: BoardParams) {
       ctx.restore();
     }
 
-    if (setpointRemote !== undefined) {
-      const width = setpoint ? 0.1 : 0.2;
+    if (drawSetpointRemote) {
+      const width = drawSetpoint ? 0.1 : 0.2;
       ctx.save();
       ctx.rotate((-setpointRemote * Math.PI) / 180);
 
