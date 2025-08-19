@@ -72,11 +72,15 @@ export class VideoSegmentManager {
     log(
       [
         `Found ${this.getSegmentCount()} segments.`,
-        ...this.getSegments().map((segment) => {
+        ...this.getSegments().map((segment, i) => {
           const start = segment.startTime();
           const end = segment.endTime() + 1;
           const duration = (end - start).toFixed(2);
-          return ` - ${start.toFixed(2)}s to ${end.toFixed(2)}s (${duration}s, ${segment.data.length} data points)`;
+          return [
+            `    ${i + 1}: ${start.toFixed(2)}s to ${end.toFixed(2)}s`,
+            `        - duration: ${duration}s`,
+            `        - at index: ${segment.data[0]!.index}`,
+          ].join('\n');
         }),
       ].join('\n'),
     );
