@@ -1,4 +1,4 @@
-import type { RowWithIndex } from '../lib/parse/types';
+import type { RowWithIndex } from '../../lib/parse/types';
 
 /*
  * Incoming commands
@@ -50,8 +50,10 @@ export type WorkerMessageDef = {
     totalMilliseconds: number;
   };
   progress: {
-    totalFramesToGenerate: number;
-    totalFramesGenerated: number;
+    videosTotal: number;
+    currentVideoIndex: number;
+    currentVideoProgress: number;
+    framesGenerated: number;
   };
   log: {
     message: string;

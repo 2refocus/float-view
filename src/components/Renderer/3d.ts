@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { RowKey } from '../lib/parse/types';
-import type { CreateRenderer } from './Renderer.types';
+import { RowKey } from '../../lib/parse/types';
+import type { CreateRenderer } from './types';
 
 interface TextElement {
   text: string;

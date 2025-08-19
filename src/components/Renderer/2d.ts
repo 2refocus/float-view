@@ -1,6 +1,6 @@
-import { RowKey, State, type RowWithIndex } from '../lib/parse/types';
-import type { CreateRenderer } from './Renderer.types';
-import type { Canvas, Ctx } from './Renderer.utils';
+import { RowKey, State, type RowWithIndex } from '../../lib/parse/types';
+import type { CreateRenderer } from './types';
+import type { Canvas, Ctx } from './svg';
 
 const FONT_FAMILY = 'IosevkaTerm Nerd Font, monospace';
 const colors = {

@@ -4,11 +4,11 @@
   import Picker from './Picker.svelte';
   import Button from './Button.svelte';
   import Input from './Input.svelte';
-  import { SvgImage } from './Renderer.utils';
+  import { SvgImage } from './Renderer/svg';
   import rollSvg from '../assets/roll.svg?raw';
   import pitchSvg from '../assets/pitch.svg?raw';
   import riderIconSvg from '../assets/rider-icon.svg?raw';
-  import type { WorkerCommand, WorkerMessage, TypedWorker } from './Renderer.types';
+  import type { WorkerCommand, WorkerMessage, TypedWorker } from './Renderer/types';
 
   const defaultFps = 20;
   const defaultWidth = 1080;
@@ -40,8 +40,10 @@
 
   // DOM elements
   let elDemoContainer = $state<HTMLDivElement | null>(null);
-  let elProgressBar = $state<HTMLProgressElement | null>(null);
-  let elProgressText = $state<HTMLPreElement | null>(null);
+  let elProgressBar1 = $state<HTMLProgressElement | null>(null);
+  let elProgressBar2 = $state<HTMLProgressElement | null>(null);
+  let elProgressText1 = $state<HTMLPreElement | null>(null);
+  let elProgressText2 = $state<HTMLPreElement | null>(null);
   let elLogOutput = $state<HTMLPreElement | null>(null);
 
   // state
@@ -82,7 +84,7 @@
   });
 
   const createWorker = (): TypedWorker<WorkerCommand, WorkerMessage> =>
-    new Worker(new URL('./Renderer.worker.ts', import.meta.url), { type: 'module' });
+    new Worker(new URL('./Renderer/worker.ts', import.meta.url), { type: 'module' });
 
   let worker = createWorker();
 
@@ -104,7 +106,8 @@
     const msg = event.data;
     switch (msg.type) {
       case 'complete':
-        elProgressBar!.value = elProgressBar!.max;
+        elProgressBar1!.value = elProgressBar1!.max;
+        elProgressBar2!.value = elProgressBar2!.max;
         elLogOutput!.textContent += `Finished rendering!\n`;
 
         isRendering = false;
@@ -115,17 +118,21 @@
         }
         return;
       case 'progress': {
-        const { totalFramesToGenerate, totalFramesGenerated } = msg;
+        elProgressBar1!.value = msg.currentVideoIndex + msg.currentVideoProgress;
+        elProgressBar1!.max = msg.videosTotal;
+
+        elProgressBar2!.value = msg.currentVideoProgress;
+        elProgressBar2!.max = 1;
+
         const durationSinceLastUpdate = performance.now() - lastProgressUpdate;
-        const framesSinceLastUpdate = totalFramesGenerated - lastProgressFrameCount;
+        const framesSinceLastUpdate = msg.framesGenerated - lastProgressFrameCount;
         const fps = Math.round(framesSinceLastUpdate / (durationSinceLastUpdate / 1000));
-        const pct = ((totalFramesGenerated / totalFramesToGenerate) * 100).toFixed(2);
+        const pct = Math.min(100, msg.currentVideoProgress * 100).toFixed(1);
 
-        elProgressText!.textContent = `${pct}% ${totalFramesGenerated}/${totalFramesToGenerate} (${fps} fps)`;
-        elProgressBar!.max = totalFramesToGenerate;
-        elProgressBar!.value = totalFramesGenerated;
+        elProgressText1!.textContent = `Segment ${msg.currentVideoIndex + 1} of ${msg.videosTotal}`;
+        elProgressText2!.textContent = `${pct}% (${msg.framesGenerated} frames) (${fps} fps)`;
 
-        lastProgressFrameCount = totalFramesGenerated;
+        lastProgressFrameCount = msg.framesGenerated;
         lastProgressUpdate = performance.now();
         pendingUpdate = false;
         return;
@@ -336,13 +343,23 @@
           <div class="space-y-4">
             <div class="space-y-2">
               <div class="flex justify-between items-center text-sm">
-                <span class="text-slate-300">Rendering Progress</span>
+                <span class="text-slate-300">Segments</span>
                 <pre
-                  bind:this={elProgressText}
+                  bind:this={elProgressText1}
                   class="text-xs font-mono text-slate-300 bg-slate-700/50 px-2 py-1 rounded">...</pre>
               </div>
               <progress
-                bind:this={elProgressBar}
+                bind:this={elProgressBar1}
+                class="w-full h-3 rounded-lg overflow-hidden bg-slate-700/50 [&::-webkit-progress-bar]:bg-slate-700/50 [&::-webkit-progress-value]:bg-blue-500 [&::-moz-progress-bar]:bg-blue-500"
+              ></progress>
+              <div class="flex justify-between items-center text-sm">
+                <span class="text-slate-300">Progress</span>
+                <pre
+                  bind:this={elProgressText2}
+                  class="text-xs font-mono text-slate-300 bg-slate-700/50 px-2 py-1 rounded">...</pre>
+              </div>
+              <progress
+                bind:this={elProgressBar2}
                 class="w-full h-3 rounded-lg overflow-hidden bg-slate-700/50 [&::-webkit-progress-bar]:bg-slate-700/50 [&::-webkit-progress-value]:bg-blue-500 [&::-moz-progress-bar]:bg-blue-500"
               ></progress>
             </div>
