@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { RowKey } from '../../lib/parse/types';
 import type { CreateRenderer } from './types';
+import boardGlbUrl from '../../assets/board.glb?url';
 
 interface TextElement {
   text: string;
@@ -158,7 +159,7 @@ function loadModels() {
   const loader = new GLTFLoader();
   return new Promise<{ boardModel: THREE.Group }>((resolve, reject) => {
     loader.load(
-      '/float-view/src/assets/board.glb',
+      boardGlbUrl,
       (gltf) => {
         _boardModel = gltf.scene;
 
