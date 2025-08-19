@@ -76,7 +76,7 @@ export class VideoSegmentManager {
           const start = segment.startTime();
           const end = segment.endTime() + 1;
           const duration = (end - start).toFixed(2);
-          return ` - ${start.toFixed(2)}s to ${end.toFixed(2)}s (${duration}s, ${segment.data.length} frames)`;
+          return ` - ${start.toFixed(2)}s to ${end.toFixed(2)}s (${duration}s, ${segment.data.length} data points)`;
         }),
       ].join('\n'),
     );
