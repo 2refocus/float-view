@@ -93,18 +93,9 @@ jobs:
           npm run build -- --base=/
           zip -r ${{ steps.meta.outputs.name }}-${{ steps.meta.outputs.version }}.zip dist
 
-      - name: Get Changes between Tags
-        id: changes
-        uses: simbo/changes-between-tags-action@v1
-
-      - name: Debug changes
-        run: |
-          echo "tag: ${{ steps.changes.outputs.tag }}"
-          echo "ref: ${{ steps.changes.outputs.ref }}"
-
       - name: Upload ${{ steps.meta.outputs.name }}-${{ steps.meta.outputs.version }}.zip to releases
         uses: softprops/action-gh-release@v2
         with:
           name: '${{ steps.meta.outputs.name }} ${{ github.ref_name }}'
-          body: ${{ steps.changes.outputs.changes }}
           files: ${{ steps.meta.outputs.name }}-${{ steps.meta.outputs.version }}.zip
+          generate_release_notes: true
