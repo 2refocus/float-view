@@ -25,3 +25,4 @@ dist-ssr
 
 # float view
 .precommit.patch
+*.blend1
