@@ -25,6 +25,7 @@ function create2dTexture(
   texture.flipY = true;
   texture.minFilter = THREE.LinearFilter;
   texture.magFilter = THREE.LinearFilter;
+  texture.colorSpace = THREE.SRGBColorSpace;
   texture.needsUpdate = true;
 
   const redraw = (data: RowWithIndex) => {
@@ -34,7 +35,7 @@ function create2dTexture(
       data,
       drawBoard: false,
       drawBackground: false,
-      drawRemoteTilt: false,
+      drawRemoteTilt: options.drawRemoteTilt,
       images: options.images,
     });
     texture.needsUpdate = true;
@@ -47,7 +48,7 @@ function textureTreads(size: number = 512, lineWidth: number = 4, spacing: numbe
   const canvas = new OffscreenCanvas(size, size);
   const ctx = canvas.getContext('2d')!;
 
-  ctx.fillStyle = '#0a0a0a';
+  ctx.fillStyle = '#303030';
   ctx.fillRect(0, 0, size, size);
 
   const h = size / 2;
@@ -76,6 +77,7 @@ function textureTreads(size: number = 512, lineWidth: number = 4, spacing: numbe
   }
 
   const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
   texture.repeat.set(1, 1);
 
   return texture;
@@ -148,11 +150,6 @@ function loadModels(sendProgressUpdate: SendProgressUpdate) {
   });
 }
 
-// TODO: footpad visualisation
-// TODO: setpoints
-// TODO: speed/duty
-// TODO: temperature/current/voltage stats
-// TODO: version
 export const create3dRenderer: CreateRenderer = async (canvas, options, sendProgressUpdate) => {
   //
   // Setup scene
@@ -164,12 +161,14 @@ export const create3dRenderer: CreateRenderer = async (canvas, options, sendProg
   const renderer = new THREE.WebGLRenderer({ canvas });
   renderer.autoClear = false;
 
-  camera.position.set(0, 3, 10);
-  camera.lookAt(2.75, 0, 0);
+  // TODO: support different board positions for render (side on, etc)
+  camera.position.set(0, 0, 10);
+  const lookTarget = new THREE.Vector3(2.75, 0, 0);
+  camera.lookAt(lookTarget);
 
   if (!isWorker) {
     const controls = new OrbitControls(camera, canvas as HTMLCanvasElement);
-    controls.target.set(2, 3, 0);
+    controls.target.copy(lookTarget);
     controls.update();
   }
 

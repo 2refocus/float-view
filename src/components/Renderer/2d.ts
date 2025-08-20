@@ -135,21 +135,20 @@ export function draw2d({
   });
 
   // Pitch
-  if (drawBoard) {
-    drawPitchAndRoll({
-      ctx,
-      x: padding,
-      y: padding * 4 + gaugeHeight,
-      w: gaugeWidth,
-      h: gaugeHeight,
-      roll: data[RowKey.Roll],
-      pitch: data[RowKey.TruePitch],
-      setpoint: data[RowKey.Setpoint],
-      setpointRemote: drawRemoteTilt ? (data[RowKey.SetpointRemote] ?? 0) : undefined,
-      rollImage: images['roll']!,
-      pitchImage: images['pitch']!,
-    });
-  }
+  drawPitchAndRoll({
+    ctx,
+    x: padding,
+    y: padding * 4 + gaugeHeight,
+    w: gaugeWidth,
+    h: gaugeHeight,
+    drawBoard,
+    roll: data[RowKey.Roll],
+    pitch: data[RowKey.TruePitch],
+    setpoint: data[RowKey.Setpoint],
+    setpointRemote: drawRemoteTilt ? (data[RowKey.SetpointRemote] ?? 0) : undefined,
+    rollImage: images['roll']!,
+    pitchImage: images['pitch']!,
+  });
 
   // Footpad
   drawFootpad({
@@ -207,6 +206,7 @@ interface BaseParams {
 }
 
 interface BoardParams extends BaseParams {
+  drawBoard: boolean;
   roll: number;
   pitch: number;
   setpoint?: number;
@@ -222,10 +222,10 @@ function getImageDimensions(image: ImageBitmap, maxSpaceLength: number): [number
 }
 
 function drawPitchAndRoll(params: BoardParams) {
-  const { ctx, roll, pitch, setpoint, setpointRemote, rollImage, pitchImage } = params;
+  const { ctx, drawBoard, roll, pitch, setpoint, setpointRemote, rollImage, pitchImage } = params;
 
   // pitch
-  {
+  if (drawBoard) {
     const { x, y, w, h } = params;
     const centerX = x + w * 0.5;
     const centerY = y + h * 0.1;
@@ -283,7 +283,7 @@ function drawPitchAndRoll(params: BoardParams) {
   }
 
   // roll
-  {
+  if (drawBoard) {
     const { x, y, w, h } = params;
     const centerX = x + w * 0.5;
     const centerY = y + h * 0.55;
