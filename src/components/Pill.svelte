@@ -1,4 +1,4 @@
-<script module>
+<script lang="ts" module>
   export interface Props {
     text: string;
     appearance: 'amber' | 'lime' | 'rose';
@@ -19,7 +19,7 @@
 <span
   class="{propClass} inline-block px-2 py-0.5 rounded-full {colorMap[
     appearance
-  ]} text-xs font-semibold uppercase tracking-wide border shadow-sm"
+  ]} text-xs font-semibold uppercase tracking-wide border shadow-sm inline-flex items-center"
 >
   {text}
 </span>
