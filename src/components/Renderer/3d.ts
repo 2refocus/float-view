@@ -70,31 +70,35 @@ function createReusableTextTexture(
   return { texture, updateText };
 }
 
-function textureTreads(size: number = 256, lineWidth: number = 6, spacing: number = 48): THREE.Texture {
+function textureTreads(size: number = 512, lineWidth: number = 4, spacing: number = 28): THREE.Texture {
   const canvas = new OffscreenCanvas(size, size);
   const ctx = canvas.getContext('2d')!;
 
-  ctx.fillStyle = '#040404';
+  ctx.fillStyle = '#0a0a0a';
   ctx.fillRect(0, 0, size, size);
+
+  const h = size / 2;
 
   // Set up line style
   ctx.strokeStyle = '#000000';
   ctx.lineWidth = lineWidth;
   ctx.lineCap = 'round';
 
-  // Draw diagonal lines going from top-left to bottom-right
-  for (let i = -size; i <= size * 2; i += spacing) {
-    ctx.beginPath();
-    ctx.moveTo(i, 0);
-    ctx.lineTo(i + size, size);
-    ctx.stroke();
-  }
+  // Draw horizontal lines for center treads
+  const lines = [0.2, 0.4, 0.6, 0.8];
+  ctx.beginPath();
+  lines.forEach((line) => {
+    ctx.moveTo(0, h + h * line);
+    ctx.lineTo(size, h + h * line);
+  });
+  ctx.stroke();
 
-  // Draw diagonal lines going from top-right to bottom-left
-  for (let i = 0; i <= size * 2; i += spacing) {
+  // Draw diagonal lines going from top-left to bottom-right
+  ctx.strokeStyle = '#000000';
+  for (let i = -size; i <= size; i += spacing) {
     ctx.beginPath();
-    ctx.moveTo(i, 0);
-    ctx.lineTo(i - size, size);
+    ctx.moveTo(i, h);
+    ctx.lineTo(i + size, h + size);
     ctx.stroke();
   }
 
@@ -102,51 +106,6 @@ function textureTreads(size: number = 256, lineWidth: number = 6, spacing: numbe
   texture.repeat.set(1, 1);
 
   return texture;
-}
-
-// FIXME: generate a proper UV mesh for the cylinder here
-function generateUVMapping(mesh: THREE.Mesh) {
-  const geometry = mesh.geometry;
-  const positionAttribute = geometry.getAttribute('position');
-  const positions = positionAttribute.array as Float32Array;
-  const vertexCount = positions.length / 3;
-
-  // Calculate bounding box for the mesh
-  geometry.computeBoundingBox();
-  const boundingBox = geometry.boundingBox;
-  if (!boundingBox) {
-    console.warn('Could not compute bounding box for mesh:', mesh.name);
-    return;
-  }
-
-  const getAxisValue = (axis: 'x' | 'y' | 'z', index: number): number => {
-    const vertexIndex = index * 3;
-    switch (axis) {
-      case 'x':
-        return positions[vertexIndex] || 0;
-      case 'y':
-        return positions[vertexIndex + 1] || 0;
-      case 'z':
-        return positions[vertexIndex + 2] || 0;
-    }
-  };
-
-  // Create UV coordinates
-  const uvs = new Float32Array(vertexCount * 2);
-  const uRange = { min: boundingBox.min.y, max: boundingBox.max.y };
-  const vRange = { min: boundingBox.min.x, max: boundingBox.max.x };
-
-  for (let i = 0; i < vertexCount; i++) {
-    const u = (getAxisValue('y', i) - uRange.min) / (uRange.max - uRange.min);
-    const v = (getAxisValue('x', i) - vRange.min) / (vRange.max - vRange.min);
-
-    uvs[i * 2] = u;
-    uvs[i * 2 + 1] = v;
-  }
-
-  // Set the UV attribute
-  geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
-  geometry.attributes.uv && (geometry.attributes.uv.needsUpdate = true);
 }
 
 let _boardModel: THREE.Group | null = null;
@@ -176,28 +135,30 @@ function loadModels(sendProgressUpdate: SendProgressUpdate) {
         _boardModel.traverse((child) => {
           if (!(child instanceof THREE.Mesh)) return;
 
-          switch (child.name) {
-            case 'Wheel_1':
-            case 'Wheel_5':
-              child.material = new THREE.MeshBasicMaterial({ color: '#333' });
-              return;
-            case 'Wheel_3':
-              generateUVMapping(child);
-              const material = new THREE.MeshBasicMaterial({ map: textureTreads() });
-              child.material = material;
-              return;
-            case 'Wheel_4':
-            case 'Wheel_2':
-              child.material = new THREE.MeshBasicMaterial({ color: '#222' });
-              return;
+          if (child.name.includes('Wheel')) {
+            // child.material = new THREE.MeshBasicMaterial({ color: '#222' });
+            child.material = new THREE.MeshPhongMaterial({ map: textureTreads() });
           }
 
           if (child.name.includes('Footpad')) {
-            child.material = new THREE.MeshBasicMaterial({ color: '#555' });
+            child.material = new THREE.MeshPhongMaterial({ color: '#78350f' });
+          }
+
+          if (child.name.includes('Box')) {
+            child.material = new THREE.MeshPhongMaterial({ color: '#555' });
           }
 
           if (child.name.includes('Rail')) {
-            child.material = new THREE.MeshBasicMaterial({ color: '#888' });
+            child.material = new THREE.MeshPhongMaterial({ color: '#888' });
+          }
+
+          if (!child.name.includes('Wheel')) {
+            child.add(
+              new THREE.LineSegments(
+                new THREE.EdgesGeometry(child.geometry),
+                new THREE.LineBasicMaterial({ color: '#000' }),
+              ),
+            );
           }
         });
 
@@ -232,18 +193,12 @@ export const create3dRenderer: CreateRenderer = async (canvas, { showRemoteTilt 
   const camera = new THREE.PerspectiveCamera(75, canvas.width / canvas.height, 0.1, 1000);
   const renderer = new THREE.WebGLRenderer({ canvas });
 
-  // Add lighting for better visibility of the board model
-  const ambientLight = new THREE.AmbientLight(0xffffff, 1.0); // stronger ambient light
-  scene.add(ambientLight);
+  const light = new THREE.HemisphereLight('#b1e1ff', '#b97a20', 1.0);
+  scene.add(light);
 
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2); // stronger directional light
-  directionalLight.position.set(5, 5, 5);
-  scene.add(directionalLight);
-
-  // Add another light from different angle
-  const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.8);
-  directionalLight2.position.set(-5, 2, -5);
-  scene.add(directionalLight2);
+  const dirLight = new THREE.DirectionalLight('#ffffff', 0.75);
+  dirLight.position.set(1, 1, 1);
+  scene.add(dirLight);
 
   // board mesh - load asynchronously but store reference;
   const { boardModel } = await loadModels(sendProgressUpdate);
@@ -264,7 +219,7 @@ export const create3dRenderer: CreateRenderer = async (canvas, { showRemoteTilt 
   boardContainer.position.set(0, 0, 0);
 
   // Position camera at an angle to see both pitch and roll rotations clearly
-  camera.position.set(0.5, 0.3, 0.6);
+  camera.position.set(4, 2, 5);
   camera.lookAt(0, 0, 0);
 
   //
