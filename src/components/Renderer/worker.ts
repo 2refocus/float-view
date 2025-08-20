@@ -1,11 +1,10 @@
-import { create2dRenderer } from './2d';
 import { RowKey } from '../../lib/parse/types';
 import { parse } from '../../lib/parse';
-import type { WorkerCommand, WorkerCommandDef, Renderer, RendererOptions } from './types';
-import { create3dRenderer } from './3d';
+import type { WorkerCommand, WorkerCommandDef, Renderer } from './types';
 import { VideoFileWriter, VideoFileManager } from './files';
-import { fatal, log, postUpdateMessage, rendererInitProgress } from './messaging';
+import { fatal, log, postUpdateMessage } from './messaging';
 import { interpolate, VideoFrameData, VideoSegmentManager } from './data';
+import { createRenderer } from './render';
 
 postMessage({ type: 'log', message: 'Renderer worker started.' });
 
@@ -17,14 +16,6 @@ let currentVideoIndex = 0;
 let currentVideoProgress = 0;
 let framesGenerated = 0;
 let renderer: Renderer | null = null;
-
-async function createRenderer(canvas: OffscreenCanvas, options: RendererOptions, use3dRenderer: boolean) {
-  const renderer = await (use3dRenderer
-    ? create3dRenderer(canvas, options, rendererInitProgress)
-    : create2dRenderer(canvas, options, rendererInitProgress));
-
-  return renderer;
-}
 
 self.addEventListener('message', async (e) => {
   const command = e.data as WorkerCommand;

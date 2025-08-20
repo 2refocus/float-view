@@ -9,6 +9,8 @@
   import pitchSvg from '../assets/pitch.svg?raw';
   import riderIconSvg from '../assets/rider-icon.svg?raw';
   import type { WorkerCommand, WorkerMessage, TypedWorker } from './Renderer/types';
+  import { createRenderer } from './Renderer/render';
+  import Pill from './Pill.svelte';
 
   const defaultFps = 20;
   const defaultWidth = 1080;
@@ -53,6 +55,7 @@
   let interpolate = new SavedState('interpolate', false);
   let showRemoteTilt = new SavedState('showRemoteTilt', false);
   let use3dRenderer = new SavedState('use3dRenderer', false);
+  let renderLoopInUi = import.meta.env.DEV ? new SavedState('renderLoopInUi', false) : { v: false };
   let inputFps = new SavedState('inputFps', '');
   let inputWidth = new SavedState('inputWidth', '');
   let inputHeight = new SavedState('inputHeight', '');
@@ -80,6 +83,7 @@
     height;
     showRemoteTilt.v;
     use3dRenderer.v;
+    renderLoopInUi.v;
     drawDebug();
   });
 
@@ -96,8 +100,6 @@
       worker.postMessage({ type: 'file', inputFile, startingIndex, endingIndex, fps, gapThresholdSecs });
     }
   });
-
-  Notification.requestPermission();
 
   let lastProgressFrameCount = 0;
   let lastProgressUpdate = 0;
@@ -152,6 +154,8 @@
   });
 
   async function chooseOutputAndRender() {
+    Notification.requestPermission();
+
     if (!filename) {
       alert('Please enter a filename!');
       return;
@@ -206,7 +210,7 @@
   }
 
   let ready = false;
-  function drawDebug() {
+  async function drawDebug() {
     if (elDemoContainer && ready) {
       elDemoContainer.innerHTML = '';
       const canvas = elDemoContainer.appendChild(document.createElement('canvas'));
@@ -214,26 +218,38 @@
       canvas.width = width;
       canvas.height = height;
 
-      const offscreen = canvas.transferControlToOffscreen();
-      worker.postMessage(
-        {
-          type: 'draw',
-          canvas: offscreen,
-          data: demoRow,
-          showRemoteTilt: showRemoteTilt.v,
-          use3dRenderer: use3dRenderer.v,
-        },
-        [offscreen],
-      );
+      if (renderLoopInUi.v) {
+        const renderer = await createRenderer(canvas, { showRemoteTilt: showRemoteTilt.v, images }, use3dRenderer.v);
+        requestAnimationFrame(function loop() {
+          if (!renderLoopInUi.v) return;
+          renderer.draw(demoRow);
+          requestAnimationFrame(loop);
+        });
+      } else {
+        const offscreen = canvas.transferControlToOffscreen();
+        worker.postMessage(
+          {
+            type: 'draw',
+            canvas: offscreen,
+            data: demoRow,
+            showRemoteTilt: showRemoteTilt.v,
+            use3dRenderer: use3dRenderer.v,
+          },
+          [offscreen],
+        );
+      }
     }
   }
 
+  const images: Record<string, ImageBitmap> = {};
   onMount(async () => {
     // NOTE: web workers can't render SVGs, even though the spec says they should
     // so we render them in the UI thread here to a bitmap, and pass that to the worker
     // See: https://stackoverflow.com/a/79196371/5552584
-    const sendBitmap = (name: string, image: ImageBitmap) =>
+    const sendBitmap = (name: string, image: ImageBitmap) => {
+      images[name] = image;
       worker.postMessage({ type: 'image', name, image }, [image]);
+    };
     sendBitmap('roll', await SvgImage.create(rollSvg).then((img) => img.bitmap(200, 180)));
     sendBitmap('pitch', await SvgImage.create(pitchSvg).then((img) => img.bitmap(500, 500)));
 
@@ -430,12 +446,28 @@
               label="Interpolate data points (smooth transitions)"
             />
             <Input id="showRemoteTilt" type="checkbox" bind:checked={showRemoteTilt.v} label="Show Remote Tilt" />
-            <Input
-              id="use3dRenderer"
-              type="checkbox"
-              bind:checked={use3dRenderer.v}
-              label="3D Renderer (experimental)"
-            />
+            <div class="flex items-center justify-center space-x-2">
+              <Pill text="experimental" appearance="lime" />
+              <Input
+                class="grow"
+                id="use3dRenderer"
+                type="checkbox"
+                bind:checked={use3dRenderer.v}
+                label="3D Renderer"
+              />
+            </div>
+            {#if import.meta.env.DEV}
+              <div class="flex items-center justify-center space-x-2">
+                <Pill text="dev" appearance="amber" />
+                <Input
+                  class="grow"
+                  id="renderInWorker"
+                  type="checkbox"
+                  bind:checked={renderLoopInUi.v}
+                  label="Render loop in UI thread"
+                />
+              </div>
+            {/if}
           </div>
         </div>
       </div>
@@ -452,7 +484,12 @@
 
         <!-- Preview -->
         <div class="bg-slate-800/50 border border-slate-700/50 rounded-lg p-6 shadow-lg backdrop-blur-sm">
-          <h2 class="text-lg font-semibold text-slate-100 mb-4">🎨 Example Output</h2>
+          <h2 class="text-lg font-semibold text-slate-100 mb-4">
+            🎨 Render Preview
+            {#if renderLoopInUi.v}
+              <Pill text="live" appearance="rose" class="animate-pulse" />
+            {/if}
+          </h2>
           <div
             bind:this={elDemoContainer}
             class="relative flex justify-center items-center h-[400px] bg-slate-900/50 border border-slate-600/50 rounded-lg overflow-hidden"

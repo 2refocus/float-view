@@ -62,7 +62,7 @@ export interface DrawParams {
 }
 
 export const create2dRenderer: CreateRenderer = async (canvas, { showRemoteTilt, images }) => {
-  const ctx = canvas.getContext('2d')!;
+  const ctx = canvas.getContext('2d')! as Ctx;
   return {
     close: () => {},
     draw: (data: RowWithIndex) => Promise.resolve(draw({ canvas, ctx, data, showRemoteTilt, images })),

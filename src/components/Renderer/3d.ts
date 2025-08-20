@@ -1,8 +1,12 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
 import { RowKey } from '../../lib/parse/types';
 import type { CreateRenderer, SendProgressUpdate } from './types';
 import boardGlbUrl from '../../assets/board.glb?url';
+
+const isWorker = typeof importScripts === 'function';
 
 interface TextElement {
   text: string;
@@ -131,12 +135,10 @@ function loadModels(sendProgressUpdate: SendProgressUpdate) {
           }
         });
 
-        // Apply crosshatch texture to all parts with "Wheel" in their names
         _boardModel.traverse((child) => {
           if (!(child instanceof THREE.Mesh)) return;
 
           if (child.name.includes('Wheel')) {
-            // child.material = new THREE.MeshBasicMaterial({ color: '#222' });
             child.material = new THREE.MeshPhongMaterial({ map: textureTreads() });
           }
 
@@ -177,7 +179,6 @@ function loadModels(sendProgressUpdate: SendProgressUpdate) {
   });
 }
 
-// TODO: move board into position
 // TODO: footpad visualisation
 // TODO: setpoints
 // TODO: speed/duty
@@ -185,42 +186,47 @@ function loadModels(sendProgressUpdate: SendProgressUpdate) {
 // TODO: version
 export const create3dRenderer: CreateRenderer = async (canvas, { showRemoteTilt }, sendProgressUpdate) => {
   //
-  // Load models and setup scene
+  // Setup scene
   //
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x2c3e50); // Dark blue-gray background
+  scene.background = new THREE.Color('#1e293b');
   const camera = new THREE.PerspectiveCamera(75, canvas.width / canvas.height, 0.1, 1000);
   const renderer = new THREE.WebGLRenderer({ canvas });
 
-  const light = new THREE.HemisphereLight('#b1e1ff', '#b97a20', 1.0);
-  scene.add(light);
+  camera.position.set(0, 3, 10);
+  camera.lookAt(2, 3, 0);
 
-  const dirLight = new THREE.DirectionalLight('#ffffff', 0.75);
+  if (!isWorker) {
+    const controls = new OrbitControls(camera, canvas as HTMLCanvasElement);
+    controls.target.set(2, 3, 0);
+    controls.update();
+  }
+
+  scene.add(new THREE.AmbientLight('#b1e1ff', 0.5));
+  scene.add(new THREE.HemisphereLight('#b1e1ff', '#b97a20', 1.0));
+
+  const dirLight = new THREE.DirectionalLight('#ffffff', 0.8);
   dirLight.position.set(1, 1, 1);
   scene.add(dirLight);
 
-  // board mesh - load asynchronously but store reference;
-  const { boardModel } = await loadModels(sendProgressUpdate);
+  //
+  // Models
+  //
 
   // Create a container for the board model to handle centering
   const boardContainer = new THREE.Group();
   scene.add(boardContainer);
 
   // Calculate the bounding box to center the model properly
+  const { boardModel } = await loadModels(sendProgressUpdate);
   const boundingBox = new THREE.Box3().setFromObject(boardModel);
   const center = boundingBox.getCenter(new THREE.Vector3());
 
   // Position the model within the container so its geometric center is at the container's origin
   boardModel.position.set(-center.x, -center.y, -center.z);
   boardContainer.add(boardModel);
-
-  // Now you can position the boardContainer anywhere and it will move about its center
   boardContainer.position.set(0, 0, 0);
-
-  // Position camera at an angle to see both pitch and roll rotations clearly
-  camera.position.set(4, 2, 5);
-  camera.lookAt(0, 0, 0);
 
   //
   // Setup orthographic camera for text overlay

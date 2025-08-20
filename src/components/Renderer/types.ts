@@ -1,4 +1,5 @@
 import type { RowWithIndex } from '../../lib/parse/types';
+import type { Canvas } from './svg';
 
 /*
  * Incoming commands
@@ -103,7 +104,7 @@ export interface RendererOptions {
 }
 export type SendProgressUpdate = (progress: number, message: string) => void;
 export type CreateRenderer = (
-  canvas: OffscreenCanvas,
+  canvas: Canvas,
   options: RendererOptions,
   sendProgressUpdate: SendProgressUpdate,
 ) => Promise<Renderer>;
