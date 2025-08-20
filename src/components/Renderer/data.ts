@@ -49,7 +49,7 @@ export class VideoSegmentManager {
 
     log('Scanning CSV for ride segments...');
 
-    let lastIndex = 0;
+    let lastIndex = startingIndex;
     for (let i = startingIndex; i < endingIndex; i++) {
       const prev = data[i - 1];
       const currentData = data[i]!;
