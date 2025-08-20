@@ -12,7 +12,8 @@ export type WorkerCommandDef = {
   };
   draw: {
     canvas: OffscreenCanvas;
-    showRemoteTilt: boolean;
+    drawRemoteTilt: boolean;
+    boardPosition3d: BoardPosition3d;
     use3dRenderer: boolean;
     data: RowWithIndex;
   };
@@ -28,7 +29,8 @@ export type WorkerCommandDef = {
     filename: string;
     canvas: OffscreenCanvas;
     interpolate: boolean;
-    showRemoteTilt: boolean;
+    drawRemoteTilt: boolean;
+    boardPosition3d: BoardPosition3d;
     use3dRenderer: boolean;
     fps: number;
     width: number;
@@ -98,16 +100,32 @@ export interface TypedWorker<C, M> extends TypedWorkerCreator<C, M>, Omit<Worker
  * Render interface
  */
 
+export enum BoardPosition3d {
+  Left = 'left',
+  Right = 'right',
+  Front = 'front',
+  FrontLeft = 'front-left',
+  FrontRight = 'front-right',
+  Back = 'back',
+  BackLeft = 'back-left',
+  BackRight = 'back-right',
+}
+
 export interface RendererOptions {
+  boardPosition3d: BoardPosition3d;
+
   drawRemoteTilt: boolean;
   images: Record<string, ImageBitmap>;
 }
+
 export type SendProgressUpdate = (progress: number, message: string) => void;
+
 export type CreateRenderer = (
   canvas: Canvas,
   options: RendererOptions,
   sendProgressUpdate: SendProgressUpdate,
 ) => Promise<Renderer>;
+
 export interface Renderer {
   draw(data: RowWithIndex): Promise<void>;
   close(): void;

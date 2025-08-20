@@ -8,7 +8,7 @@
   import rollSvg from '../assets/roll.svg?raw';
   import pitchSvg from '../assets/pitch.svg?raw';
   import riderIconSvg from '../assets/rider-icon.svg?raw';
-  import type { WorkerCommand, WorkerMessage, TypedWorker } from './Renderer/types';
+  import { type WorkerCommand, type WorkerMessage, type TypedWorker, BoardPosition3d } from './Renderer/types';
   import { createRenderer } from './Renderer/render';
   import Pill from './Pill.svelte';
 
@@ -55,6 +55,7 @@
   let interpolate = new SavedState('interpolate', false);
   let showRemoteTilt = new SavedState('showRemoteTilt', false);
   let use3dRenderer = new SavedState('use3dRenderer', false);
+  let boardPosition3d = new SavedState('boardPosition3d', BoardPosition3d.BackRight);
   let renderInUi = import.meta.env.DEV ? new SavedState('renderInUi', false) : { v: false };
   let fullscreenPreview = import.meta.env.DEV ? new SavedState('fullscreenPreview', false) : { v: false };
   let inputFps = new SavedState('inputFps', '');
@@ -85,6 +86,7 @@
     showRemoteTilt.v;
     use3dRenderer.v;
     renderInUi.v;
+    boardPosition3d.v;
     drawDebug();
   });
 
@@ -182,8 +184,9 @@
         width,
         height,
         canvas,
+        boardPosition3d: boardPosition3d.v,
         interpolate: interpolate.v,
-        showRemoteTilt: showRemoteTilt.v,
+        drawRemoteTilt: showRemoteTilt.v,
         use3dRenderer: use3dRenderer.v,
         filename,
       },
@@ -224,7 +227,11 @@
       canvas.height = height;
 
       if (renderInUi.v) {
-        const renderer = await createRenderer(canvas, { drawRemoteTilt: showRemoteTilt.v, images }, use3dRenderer.v);
+        const renderer = await createRenderer(
+          canvas,
+          { boardPosition3d: boardPosition3d.v, drawRemoteTilt: showRemoteTilt.v, images },
+          use3dRenderer.v,
+        );
         await renderer.draw(demoRow);
 
         if (use3dRenderer.v) {
@@ -240,7 +247,8 @@
             type: 'draw',
             canvas: offscreen,
             data: demoRow,
-            showRemoteTilt: showRemoteTilt.v,
+            boardPosition3d: boardPosition3d.v,
+            drawRemoteTilt: showRemoteTilt.v,
             use3dRenderer: use3dRenderer.v,
           },
           [offscreen],
@@ -332,6 +340,16 @@
       <Pill text="experimental" appearance="lime" />
       <Input class="grow" id="use3dRenderer" type="checkbox" bind:checked={use3dRenderer.v} label="3D Renderer" />
     </div>
+    {#if use3dRenderer.v}
+      <div class="flex items-center justify-between space-x-2">
+        <label for="boardPosition3d"><Pill text="experimental" appearance="lime" /> View board from:</label>
+        <select bind:value={boardPosition3d.v} id="boardPosition3d" class="bg-slate-950/50 border rounded-lg py-1 px-2">
+          {#each Object.values(BoardPosition3d) as position}
+            <option value={position}>{position.charAt(0).toUpperCase() + position.slice(1)}</option>
+          {/each}
+        </select>
+      </div>
+    {/if}
     {#if import.meta.env.DEV}
       <div class="flex items-center justify-center space-x-2">
         <Pill text="dev" appearance="amber" />

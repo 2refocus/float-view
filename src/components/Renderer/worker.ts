@@ -1,6 +1,6 @@
 import { RowKey } from '../../lib/parse/types';
 import { parse } from '../../lib/parse';
-import type { WorkerCommand, WorkerCommandDef, Renderer } from './types';
+import type { WorkerCommand, WorkerCommandDef, Renderer, BoardPosition3d } from './types';
 import { VideoFileWriter, VideoFileManager } from './files';
 import { fatal, log, postUpdateMessage } from './messaging';
 import { interpolate, VideoFrameData, VideoSegmentManager } from './data';
@@ -35,7 +35,7 @@ self.addEventListener('message', async (e) => {
 
       renderer = await createRenderer(
         command.canvas,
-        { drawRemoteTilt: command.showRemoteTilt, images },
+        { drawRemoteTilt: command.drawRemoteTilt, boardPosition3d: command.boardPosition3d, images },
         command.use3dRenderer,
       );
 
@@ -89,7 +89,8 @@ interface VideoGeneratorOptions {
   height: number;
   canvas: OffscreenCanvas;
   interpolate: boolean;
-  showRemoteTilt: boolean;
+  drawRemoteTilt: boolean;
+  boardPosition3d: BoardPosition3d;
   use3dRenderer: boolean;
   images: Record<string, ImageBitmap>;
 }
@@ -117,7 +118,11 @@ class VideoGenerator {
     // Create renderer
     this.renderer = await createRenderer(
       this.options.canvas,
-      { drawRemoteTilt: this.options.showRemoteTilt, images: this.options.images },
+      {
+        drawRemoteTilt: this.options.drawRemoteTilt,
+        boardPosition3d: this.options.boardPosition3d,
+        images: this.options.images,
+      },
       this.options.use3dRenderer,
     );
 
@@ -284,8 +289,9 @@ async function generateVideo({
   canvas,
   filename,
   use3dRenderer,
+  boardPosition3d,
   interpolate = false,
-  showRemoteTilt = false,
+  drawRemoteTilt = false,
 }: WorkerCommandDef['start']) {
   log('Setting up video generator...');
 
@@ -295,7 +301,8 @@ async function generateVideo({
     height,
     canvas,
     interpolate,
-    showRemoteTilt,
+    drawRemoteTilt,
+    boardPosition3d,
     use3dRenderer,
     images,
   });

@@ -3,7 +3,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 import { RowKey, type RowWithIndex } from '../../lib/parse/types';
-import type { CreateRenderer, RendererOptions, SendProgressUpdate } from './types';
+import { BoardPosition3d, type CreateRenderer, type RendererOptions, type SendProgressUpdate } from './types';
 import boardGlbUrl from '../../assets/board.glb?url';
 import { draw2d } from './2d';
 
@@ -150,6 +150,30 @@ function loadModels(sendProgressUpdate: SendProgressUpdate) {
   });
 }
 
+function getCameraVectors(boardPosition: RendererOptions['boardPosition3d']): {
+  lookTarget: THREE.Vector3;
+  position: THREE.Vector3;
+} {
+  switch (boardPosition) {
+    case BoardPosition3d.Left:
+      return { lookTarget: new THREE.Vector3(0, 0, 2.5), position: new THREE.Vector3(-12, 0, 0) };
+    case BoardPosition3d.Right:
+      return { lookTarget: new THREE.Vector3(0, 0, -2.5), position: new THREE.Vector3(12, 0, 0) };
+    case BoardPosition3d.Front:
+      return { lookTarget: new THREE.Vector3(-2.75, 0, 0), position: new THREE.Vector3(0, 0, -10) };
+    case BoardPosition3d.FrontLeft:
+      return { lookTarget: new THREE.Vector3(-3.5, 0, 0), position: new THREE.Vector3(-10, 0, -10) };
+    case BoardPosition3d.FrontRight:
+      return { lookTarget: new THREE.Vector3(-6, 0, 0), position: new THREE.Vector3(10, 0, -10) };
+    case BoardPosition3d.Back:
+      return { lookTarget: new THREE.Vector3(2.75, 0, 0), position: new THREE.Vector3(0, 0, 10) };
+    case BoardPosition3d.BackLeft:
+      return { lookTarget: new THREE.Vector3(6, 0, 0), position: new THREE.Vector3(-10, 0, 10) };
+    case BoardPosition3d.BackRight:
+      return { lookTarget: new THREE.Vector3(3.5, 0, 0), position: new THREE.Vector3(10, 0, 10) };
+  }
+}
+
 export const create3dRenderer: CreateRenderer = async (canvas, options, sendProgressUpdate) => {
   //
   // Setup scene
@@ -161,14 +185,13 @@ export const create3dRenderer: CreateRenderer = async (canvas, options, sendProg
   const renderer = new THREE.WebGLRenderer({ canvas });
   renderer.autoClear = false;
 
-  // TODO: support different board positions for render (side on, etc)
-  camera.position.set(0, 0, 10);
-  const lookTarget = new THREE.Vector3(2.75, 0, 0);
-  camera.lookAt(lookTarget);
+  const cameraVectors = getCameraVectors(options.boardPosition3d);
+  camera.position.copy(cameraVectors.position);
+  camera.lookAt(cameraVectors.lookTarget);
 
   if (!isWorker) {
     const controls = new OrbitControls(camera, canvas as HTMLCanvasElement);
-    controls.target.copy(lookTarget);
+    controls.target.copy(cameraVectors.lookTarget);
     controls.update();
   }
 
