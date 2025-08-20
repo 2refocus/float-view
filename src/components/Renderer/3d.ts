@@ -5,6 +5,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RowKey } from '../../lib/parse/types';
 import type { CreateRenderer, SendProgressUpdate } from './types';
 import boardGlbUrl from '../../assets/board.glb?url';
+import { FONT_FAMILY } from './render';
 
 const isWorker = typeof importScripts === 'function';
 
@@ -31,44 +32,21 @@ function createReusableTextTexture(
   const ctx = canvas.getContext('2d')!;
   const texture = new THREE.CanvasTexture(canvas);
 
-  // Set texture properties for proper rendering
-  texture.flipY = false;
+  // HTML canvas' origin is top-left, but three.js uses WebGL whose origin is bottom-left.
+  texture.flipY = true;
   texture.minFilter = THREE.LinearFilter;
   texture.magFilter = THREE.LinearFilter;
+  texture.needsUpdate = true;
 
   const updateText = (elements: TextElement[]) => {
-    // Clear canvas with transparent background
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Save the current context state
-    ctx.save();
-
-    // Flip the canvas vertically to fix upside-down text
-    ctx.scale(1, -1);
-    ctx.translate(0, -canvas.height);
-
-    // Draw each text element
     elements.forEach((element) => {
-      const fontSize = element.fontSize ?? defaultFontSize;
-      const color = element.color ?? defaultColor;
-      const align = element.align ?? 'left';
-      const baseline = element.baseline ?? 'top';
-
-      // Set text properties
-      ctx.font = `${fontSize}px Arial, sans-serif`;
-      ctx.fillStyle = color;
-      ctx.textAlign = align;
-      ctx.textBaseline = baseline;
-
-      // Now we can use the original Y coordinate since we've flipped the canvas
+      ctx.font = `${element.fontSize ?? defaultFontSize}px ${FONT_FAMILY}`;
+      ctx.fillStyle = element.color ?? defaultColor;
+      ctx.textAlign = element.align ?? 'left';
+      ctx.textBaseline = element.baseline ?? 'top';
       ctx.fillText(element.text, element.x, element.y);
     });
-
-    // Restore the context state
-    ctx.restore();
-
-    // Mark texture as needing update
-    texture.needsUpdate = true;
   };
 
   return { texture, updateText };
