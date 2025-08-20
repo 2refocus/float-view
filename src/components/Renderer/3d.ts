@@ -150,27 +150,31 @@ function loadModels(sendProgressUpdate: SendProgressUpdate) {
   });
 }
 
-function getCameraVectors(boardPosition: RendererOptions['boardPosition3d']): {
+function getCameraVectors(
+  boardPosition: RendererOptions['boardPosition3d'],
+  boardPosition3dRaised: RendererOptions['boardPosition3dRaised'],
+): {
   lookTarget: THREE.Vector3;
   position: THREE.Vector3;
 } {
+  const y = boardPosition3dRaised ? 5 : 0;
   switch (boardPosition) {
     case BoardPosition3d.Left:
-      return { lookTarget: new THREE.Vector3(0, 0, 2.5), position: new THREE.Vector3(-12, 0, 0) };
+      return { lookTarget: new THREE.Vector3(0, 0, 2.5), position: new THREE.Vector3(-12, y, 0) };
     case BoardPosition3d.Right:
-      return { lookTarget: new THREE.Vector3(0, 0, -2.5), position: new THREE.Vector3(12, 0, 0) };
+      return { lookTarget: new THREE.Vector3(0, 0, -2.5), position: new THREE.Vector3(12, y, 0) };
     case BoardPosition3d.Front:
-      return { lookTarget: new THREE.Vector3(-2.75, 0, 0), position: new THREE.Vector3(0, 0, -10) };
+      return { lookTarget: new THREE.Vector3(-2.75, 0, 0), position: new THREE.Vector3(0, y, -10) };
     case BoardPosition3d.FrontLeft:
-      return { lookTarget: new THREE.Vector3(-3.5, 0, 0), position: new THREE.Vector3(-10, 0, -10) };
+      return { lookTarget: new THREE.Vector3(-3.5, 0, 0), position: new THREE.Vector3(-10, y, -10) };
     case BoardPosition3d.FrontRight:
-      return { lookTarget: new THREE.Vector3(-6, 0, 0), position: new THREE.Vector3(10, 0, -10) };
+      return { lookTarget: new THREE.Vector3(-6, 0, 0), position: new THREE.Vector3(10, y, -10) };
     case BoardPosition3d.Back:
-      return { lookTarget: new THREE.Vector3(2.75, 0, 0), position: new THREE.Vector3(0, 0, 10) };
+      return { lookTarget: new THREE.Vector3(2.75, 0, 0), position: new THREE.Vector3(0, y, 10) };
     case BoardPosition3d.BackLeft:
-      return { lookTarget: new THREE.Vector3(6, 0, 0), position: new THREE.Vector3(-10, 0, 10) };
+      return { lookTarget: new THREE.Vector3(6, 0, 0), position: new THREE.Vector3(-10, y, 10) };
     case BoardPosition3d.BackRight:
-      return { lookTarget: new THREE.Vector3(3.5, 0, 0), position: new THREE.Vector3(10, 0, 10) };
+      return { lookTarget: new THREE.Vector3(3.5, 0, 0), position: new THREE.Vector3(10, y, 10) };
   }
 }
 
@@ -185,7 +189,7 @@ export const create3dRenderer: CreateRenderer = async (canvas, options, sendProg
   const renderer = new THREE.WebGLRenderer({ canvas });
   renderer.autoClear = false;
 
-  const cameraVectors = getCameraVectors(options.boardPosition3d);
+  const cameraVectors = getCameraVectors(options.boardPosition3d, options.boardPosition3dRaised);
   camera.position.copy(cameraVectors.position);
   camera.lookAt(cameraVectors.lookTarget);
 
@@ -219,7 +223,7 @@ export const create3dRenderer: CreateRenderer = async (canvas, options, sendProg
   // Position the model within the container so its geometric center is at the container's origin
   boardModel.position.set(-center.x, -center.y, -center.z);
   boardContainer.add(boardModel);
-  boardContainer.position.set(0, 0, 0);
+  boardContainer.position.set(0, 0.5, 0);
 
   //
   // Setup orthographic camera for UI overlays

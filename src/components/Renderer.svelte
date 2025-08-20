@@ -56,6 +56,7 @@
   let showRemoteTilt = new SavedState('showRemoteTilt', false);
   let use3dRenderer = new SavedState('use3dRenderer', false);
   let boardPosition3d = new SavedState('boardPosition3d', BoardPosition3d.BackRight);
+  let boardPosition3dRaised = new SavedState('boardPosition3dRaised', false);
   let renderInUi = import.meta.env.DEV ? new SavedState('renderInUi', false) : { v: false };
   let fullscreenPreview = import.meta.env.DEV ? new SavedState('fullscreenPreview', false) : { v: false };
   let inputFps = new SavedState('inputFps', '');
@@ -87,6 +88,7 @@
     use3dRenderer.v;
     renderInUi.v;
     boardPosition3d.v;
+    boardPosition3dRaised.v;
     drawDebug();
   });
 
@@ -185,6 +187,7 @@
         height,
         canvas,
         boardPosition3d: boardPosition3d.v,
+        boardPosition3dRaised: boardPosition3dRaised.v,
         interpolate: interpolate.v,
         drawRemoteTilt: showRemoteTilt.v,
         use3dRenderer: use3dRenderer.v,
@@ -229,7 +232,12 @@
       if (renderInUi.v) {
         const renderer = await createRenderer(
           canvas,
-          { boardPosition3d: boardPosition3d.v, drawRemoteTilt: showRemoteTilt.v, images },
+          {
+            boardPosition3d: boardPosition3d.v,
+            boardPosition3dRaised: boardPosition3dRaised.v,
+            drawRemoteTilt: showRemoteTilt.v,
+            images,
+          },
           use3dRenderer.v,
         );
         await renderer.draw(demoRow);
@@ -248,6 +256,7 @@
             canvas: offscreen,
             data: demoRow,
             boardPosition3d: boardPosition3d.v,
+            boardPosition3dRaised: boardPosition3dRaised.v,
             drawRemoteTilt: showRemoteTilt.v,
             use3dRenderer: use3dRenderer.v,
           },
@@ -336,19 +345,17 @@
       label="Interpolate data points (smooth transitions)"
     />
     <Input id="showRemoteTilt" type="checkbox" bind:checked={showRemoteTilt.v} label="Show Remote Tilt" />
-    <div class="flex items-center justify-center space-x-2">
-      <Pill text="experimental" appearance="lime" />
-      <Input class="grow" id="use3dRenderer" type="checkbox" bind:checked={use3dRenderer.v} label="3D Renderer" />
-    </div>
+    <Input id="use3dRenderer" type="checkbox" bind:checked={use3dRenderer.v} label="3D Renderer" />
     {#if use3dRenderer.v}
       <div class="flex items-center justify-between space-x-2">
-        <label for="boardPosition3d"><Pill text="experimental" appearance="lime" /> View board from:</label>
-        <select bind:value={boardPosition3d.v} id="boardPosition3d" class="bg-slate-950/50 border rounded-lg py-1 px-2">
+        <label for="boardPosition3d">View board from:</label>
+        <select bind:value={boardPosition3d.v} id="boardPosition3d" class="bg-slate-950/50 border rounded-lg px-2">
           {#each Object.values(BoardPosition3d) as position}
             <option value={position}>{position.charAt(0).toUpperCase() + position.slice(1)}</option>
           {/each}
         </select>
       </div>
+      <Input id="boardPosition3dRaised" type="checkbox" bind:checked={boardPosition3dRaised.v} label="Lift Camera Up" />
     {/if}
     {#if import.meta.env.DEV}
       <div class="flex items-center justify-center space-x-2">

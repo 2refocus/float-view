@@ -35,7 +35,12 @@ self.addEventListener('message', async (e) => {
 
       renderer = await createRenderer(
         command.canvas,
-        { drawRemoteTilt: command.drawRemoteTilt, boardPosition3d: command.boardPosition3d, images },
+        {
+          drawRemoteTilt: command.drawRemoteTilt,
+          boardPosition3d: command.boardPosition3d,
+          boardPosition3dRaised: command.boardPosition3dRaised,
+          images,
+        },
         command.use3dRenderer,
       );
 
@@ -91,6 +96,7 @@ interface VideoGeneratorOptions {
   interpolate: boolean;
   drawRemoteTilt: boolean;
   boardPosition3d: BoardPosition3d;
+  boardPosition3dRaised: boolean;
   use3dRenderer: boolean;
   images: Record<string, ImageBitmap>;
 }
@@ -121,6 +127,7 @@ class VideoGenerator {
       {
         drawRemoteTilt: this.options.drawRemoteTilt,
         boardPosition3d: this.options.boardPosition3d,
+        boardPosition3dRaised: this.options.boardPosition3dRaised,
         images: this.options.images,
       },
       this.options.use3dRenderer,
@@ -290,6 +297,7 @@ async function generateVideo({
   filename,
   use3dRenderer,
   boardPosition3d,
+  boardPosition3dRaised,
   interpolate = false,
   drawRemoteTilt = false,
 }: WorkerCommandDef['start']) {
@@ -303,6 +311,7 @@ async function generateVideo({
     interpolate,
     drawRemoteTilt,
     boardPosition3d,
+    boardPosition3dRaised,
     use3dRenderer,
     images,
   });
