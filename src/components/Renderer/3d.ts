@@ -195,6 +195,7 @@ export const create3dRenderer: CreateRenderer = async (canvas, options, sendProg
     controls.update();
   }
 
+  scene.add(new THREE.AmbientLight('#fff', 1));
   scene.add(new THREE.AmbientLight('#b1e1ff', 0.5));
   scene.add(new THREE.HemisphereLight('#b1e1ff', '#b97a20', 1.0));
 
@@ -278,6 +279,7 @@ export const create3dRenderer: CreateRenderer = async (canvas, options, sendProg
       // render text scene on top
       renderer.render(uiScene, uiCamera);
 
+      await new Promise((resolve) => requestAnimationFrame(resolve));
       await new Promise((resolve) => requestAnimationFrame(resolve));
     },
   };

@@ -491,6 +491,7 @@ function drawFootpad(params: FootpadParams) {
 
     ctx.save();
     ctx.translate(x, y);
+    ctx.globalAlpha = 0.5;
 
     // footpad outline
     ctx.strokeStyle = '#ffffff';
