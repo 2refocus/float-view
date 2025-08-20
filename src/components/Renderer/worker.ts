@@ -35,7 +35,7 @@ self.addEventListener('message', async (e) => {
 
       renderer = await createRenderer(
         command.canvas,
-        { showRemoteTilt: command.showRemoteTilt, images },
+        { drawRemoteTilt: command.showRemoteTilt, images },
         command.use3dRenderer,
       );
 
@@ -117,7 +117,7 @@ class VideoGenerator {
     // Create renderer
     this.renderer = await createRenderer(
       this.options.canvas,
-      { showRemoteTilt: this.options.showRemoteTilt, images: this.options.images },
+      { drawRemoteTilt: this.options.showRemoteTilt, images: this.options.images },
       this.options.use3dRenderer,
     );
 

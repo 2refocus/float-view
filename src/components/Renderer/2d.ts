@@ -57,23 +57,37 @@ export interface DrawParams {
   canvas: Canvas;
   ctx: Ctx;
   data: RowWithIndex;
-  showRemoteTilt: boolean;
   images: Record<string, ImageBitmap>;
+
+  drawBackground?: boolean;
+  drawBoard?: boolean;
+  drawRemoteTilt?: boolean;
 }
 
-export const create2dRenderer: CreateRenderer = async (canvas, { showRemoteTilt, images }) => {
+export const create2dRenderer: CreateRenderer = async (canvas, { drawRemoteTilt, images }) => {
   const ctx = canvas.getContext('2d')! as Ctx;
   return {
     close: () => {},
-    draw: (data: RowWithIndex) => Promise.resolve(draw({ canvas, ctx, data, showRemoteTilt, images })),
+    draw: (data: RowWithIndex) => Promise.resolve(draw2d({ canvas, ctx, data, drawRemoteTilt, images })),
   };
 };
 
 // TODO: show battery cell percentage
-function draw({ canvas, ctx, data, images, showRemoteTilt }: DrawParams) {
+export function draw2d({
+  canvas,
+  ctx,
+  data,
+  images,
+  drawBoard = true,
+  drawBackground = true,
+  drawRemoteTilt = false,
+}: DrawParams) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = colors.bg;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  if (drawBackground) {
+    ctx.fillStyle = colors.bg;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
 
   const width = canvas.width;
   const height = canvas.height;
@@ -92,7 +106,6 @@ function draw({ canvas, ctx, data, images, showRemoteTilt }: DrawParams) {
 
   // Draw speed gauge
   drawGauge({
-    canvas,
     label: 'Speed',
     ctx,
     x: padding,
@@ -108,7 +121,6 @@ function draw({ canvas, ctx, data, images, showRemoteTilt }: DrawParams) {
 
   // Draw duty cycle gauge
   drawGauge({
-    canvas,
     label: 'Duty Cycle',
     ctx,
     x: padding + width * 0.5,
@@ -123,24 +135,24 @@ function draw({ canvas, ctx, data, images, showRemoteTilt }: DrawParams) {
   });
 
   // Pitch
-  drawBoard({
-    canvas,
-    ctx,
-    x: padding,
-    y: padding * 4 + gaugeHeight,
-    w: gaugeWidth,
-    h: gaugeHeight,
-    roll: data[RowKey.Roll],
-    pitch: data[RowKey.TruePitch],
-    setpoint: data[RowKey.Setpoint],
-    setpointRemote: showRemoteTilt ? (data[RowKey.SetpointRemote] ?? 0) : undefined,
-    rollImage: images['roll']!,
-    pitchImage: images['pitch']!,
-  });
+  if (drawBoard) {
+    drawPitchAndRoll({
+      ctx,
+      x: padding,
+      y: padding * 4 + gaugeHeight,
+      w: gaugeWidth,
+      h: gaugeHeight,
+      roll: data[RowKey.Roll],
+      pitch: data[RowKey.TruePitch],
+      setpoint: data[RowKey.Setpoint],
+      setpointRemote: drawRemoteTilt ? (data[RowKey.SetpointRemote] ?? 0) : undefined,
+      rollImage: images['roll']!,
+      pitchImage: images['pitch']!,
+    });
+  }
 
   // Footpad
   drawFootpad({
-    canvas,
     ctx,
     x: padding + width * 0.5,
     y: padding * 4 + gaugeHeight,
@@ -175,7 +187,6 @@ function draw({ canvas, ctx, data, images, showRemoteTilt }: DrawParams) {
 
     drawValueBox({
       label: config.label,
-      canvas,
       ctx,
       x,
       y,
@@ -188,7 +199,6 @@ function draw({ canvas, ctx, data, images, showRemoteTilt }: DrawParams) {
 }
 
 interface BaseParams {
-  canvas: Canvas;
   ctx: Ctx;
   x: number;
   y: number;
@@ -211,7 +221,7 @@ function getImageDimensions(image: ImageBitmap, maxSpaceLength: number): [number
   return [image.width * scale, image.height * scale];
 }
 
-function drawBoard(params: BoardParams) {
+function drawPitchAndRoll(params: BoardParams) {
   const { ctx, roll, pitch, setpoint, setpointRemote, rollImage, pitchImage } = params;
 
   // pitch
@@ -326,7 +336,7 @@ function drawBoard(params: BoardParams) {
   }
 }
 
-interface GaugeParams extends BaseParams {
+export interface GaugeParams extends BaseParams {
   label: string;
   value: number;
   valueStr: string;
@@ -335,7 +345,7 @@ interface GaugeParams extends BaseParams {
   maxValue: number;
 }
 
-function drawGauge({ label, ctx, x, y, w, h, value, valueStr, unit, minValue, maxValue }: GaugeParams) {
+export function drawGauge({ label, ctx, x, y, w, h, value, valueStr, unit, minValue, maxValue }: GaugeParams) {
   const centerX = x + w / 2;
   const centerY = y + h * 0.6; // Position gauge arc in lower part of area
   const radius = Math.min(w, h) * 0.4;

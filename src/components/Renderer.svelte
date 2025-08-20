@@ -224,7 +224,7 @@
       canvas.height = height;
 
       if (renderInUi.v) {
-        const renderer = await createRenderer(canvas, { showRemoteTilt: showRemoteTilt.v, images }, use3dRenderer.v);
+        const renderer = await createRenderer(canvas, { drawRemoteTilt: showRemoteTilt.v, images }, use3dRenderer.v);
         await renderer.draw(demoRow);
 
         if (use3dRenderer.v) {

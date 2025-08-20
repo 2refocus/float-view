@@ -2,31 +2,20 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-import { RowKey } from '../../lib/parse/types';
-import type { CreateRenderer, SendProgressUpdate } from './types';
+import { RowKey, type RowWithIndex } from '../../lib/parse/types';
+import type { CreateRenderer, RendererOptions, SendProgressUpdate } from './types';
 import boardGlbUrl from '../../assets/board.glb?url';
-import { FONT_FAMILY } from './render';
+import { draw2d } from './2d';
 
 const isWorker = typeof importScripts === 'function';
 
-interface TextElement {
-  text: string;
-  x: number;
-  y: number;
-  fontSize?: number;
-  color?: string;
-  align?: 'left' | 'center' | 'right';
-  baseline?: 'top' | 'middle' | 'bottom';
-}
-
-function createReusableTextTexture(
+function create2dTexture(
   canvasWidth: number,
   canvasHeight: number,
-  defaultFontSize: number = 32,
-  defaultColor: string = '#ffffff',
+  options: RendererOptions,
 ): {
   texture: THREE.Texture;
-  updateText: (elements: TextElement[]) => void;
+  redraw: (data: RowWithIndex) => void;
 } {
   const canvas = new OffscreenCanvas(canvasWidth, canvasHeight);
   const ctx = canvas.getContext('2d')!;
@@ -38,18 +27,20 @@ function createReusableTextTexture(
   texture.magFilter = THREE.LinearFilter;
   texture.needsUpdate = true;
 
-  const updateText = (elements: TextElement[]) => {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    elements.forEach((element) => {
-      ctx.font = `${element.fontSize ?? defaultFontSize}px ${FONT_FAMILY}`;
-      ctx.fillStyle = element.color ?? defaultColor;
-      ctx.textAlign = element.align ?? 'left';
-      ctx.textBaseline = element.baseline ?? 'top';
-      ctx.fillText(element.text, element.x, element.y);
+  const redraw = (data: RowWithIndex) => {
+    draw2d({
+      canvas,
+      ctx,
+      data,
+      drawBoard: false,
+      drawBackground: false,
+      drawRemoteTilt: false,
+      images: options.images,
     });
+    texture.needsUpdate = true;
   };
 
-  return { texture, updateText };
+  return { texture, redraw };
 }
 
 function textureTreads(size: number = 512, lineWidth: number = 4, spacing: number = 28): THREE.Texture {
@@ -162,7 +153,7 @@ function loadModels(sendProgressUpdate: SendProgressUpdate) {
 // TODO: speed/duty
 // TODO: temperature/current/voltage stats
 // TODO: version
-export const create3dRenderer: CreateRenderer = async (canvas, { showRemoteTilt }, sendProgressUpdate) => {
+export const create3dRenderer: CreateRenderer = async (canvas, options, sendProgressUpdate) => {
   //
   // Setup scene
   //
@@ -171,9 +162,10 @@ export const create3dRenderer: CreateRenderer = async (canvas, { showRemoteTilt 
   scene.background = new THREE.Color('#1e293b');
   const camera = new THREE.PerspectiveCamera(75, canvas.width / canvas.height, 0.1, 1000);
   const renderer = new THREE.WebGLRenderer({ canvas });
+  renderer.autoClear = false;
 
   camera.position.set(0, 3, 10);
-  camera.lookAt(2, 3, 0);
+  camera.lookAt(2.75, 0, 0);
 
   if (!isWorker) {
     const controls = new OrbitControls(camera, canvas as HTMLCanvasElement);
@@ -207,28 +199,28 @@ export const create3dRenderer: CreateRenderer = async (canvas, { showRemoteTilt 
   boardContainer.position.set(0, 0, 0);
 
   //
-  // Setup orthographic camera for text overlay
+  // Setup orthographic camera for UI overlays
   //
 
-  const textScene = new THREE.Scene();
-  const textCamera = new THREE.OrthographicCamera(0, canvas.width, canvas.height, 0, -1, 1);
-  const { texture: textTexture, updateText } = createReusableTextTexture(canvas.width, canvas.height);
+  const uiScene = new THREE.Scene();
+  const uiCamera = new THREE.OrthographicCamera(0, canvas.width, canvas.height, 0, -1, 1);
+
+  const { texture: speedGaugeTexture, redraw } = create2dTexture(canvas.width, canvas.height, options);
   {
     // Create a plane geometry that covers the entire screen
-    const textGeometry = new THREE.PlaneGeometry(canvas.width, canvas.height);
-    const textMaterial = new THREE.MeshBasicMaterial({
-      map: textTexture,
+    const gaugeGeometry = new THREE.PlaneGeometry(canvas.width, canvas.height);
+    const gaugeMaterial = new THREE.MeshBasicMaterial({
+      map: speedGaugeTexture,
       transparent: true,
       depthTest: false, // Always render on top
       depthWrite: false, // Don't write to depth buffer
     });
-    const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+    const gaugeMesh = new THREE.Mesh(gaugeGeometry, gaugeMaterial);
 
     // Position the UI plane
-    textMesh.position.set(canvas.width / 2, canvas.height / 2, 0);
-    textScene.add(textMesh);
+    gaugeMesh.position.set(canvas.width / 2, canvas.height / 2, 0);
+    uiScene.add(gaugeMesh);
   }
-  renderer.autoClear = false;
 
   //
   // Renderer
@@ -255,46 +247,14 @@ export const create3dRenderer: CreateRenderer = async (canvas, { showRemoteTilt 
       }
 
       {
-        updateText([
-          // Title in top-left
-          { text: 'Float View 3D', x: 50, y: 50, fontSize: 32, color: '#ffffff', align: 'left', baseline: 'top' },
-          // Pitch and Roll in top-right
-          {
-            text: `Pitch: ${data[RowKey.TruePitch].toFixed(1)}°`,
-            x: canvas.width - 50,
-            y: 50,
-            fontSize: 24,
-            color: '#00ff00',
-            align: 'right',
-            baseline: 'top',
-          },
-          {
-            text: `Roll: ${data[RowKey.Roll].toFixed(1)}°`,
-            x: canvas.width - 50,
-            y: 90,
-            fontSize: 24,
-            color: '#0080ff',
-            align: 'right',
-            baseline: 'top',
-          },
-          // Version in bottom middle
-          {
-            text: import.meta.env.VITE_BUILD_VERSION,
-            x: canvas.width / 2,
-            y: canvas.height - 50,
-            fontSize: 32,
-            color: '#555',
-            align: 'center',
-            baseline: 'bottom',
-          },
-        ]);
+        redraw(data);
       }
 
       // render main scene
       renderer.clear();
       renderer.render(scene, camera);
       // render text scene on top
-      renderer.render(textScene, textCamera);
+      renderer.render(uiScene, uiCamera);
 
       await new Promise((resolve) => requestAnimationFrame(resolve));
     },

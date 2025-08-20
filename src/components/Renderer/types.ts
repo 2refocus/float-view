@@ -99,7 +99,7 @@ export interface TypedWorker<C, M> extends TypedWorkerCreator<C, M>, Omit<Worker
  */
 
 export interface RendererOptions {
-  showRemoteTilt: boolean;
+  drawRemoteTilt: boolean;
   images: Record<string, ImageBitmap>;
 }
 export type SendProgressUpdate = (progress: number, message: string) => void;
