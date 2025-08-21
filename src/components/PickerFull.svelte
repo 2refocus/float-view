@@ -1,6 +1,14 @@
+<script module lang="ts">
+  import type { HTMLAttributes } from 'svelte/elements';
+
+  export interface Props extends Omit<HTMLAttributes<HTMLDivElement>, 'title'> {
+    file?: File;
+    loading?: boolean;
+  }
+</script>
+
 <script lang="ts">
   import riderSvg from '../assets/rider-icon.svg?raw';
-  import { type Props } from './PickerFill';
   import Modal from './Modal.svelte';
   import Picker from './Picker.svelte';
 

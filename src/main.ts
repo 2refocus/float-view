@@ -1,5 +1,5 @@
 import './index.css';
-import App from './components/App.svelte';
+import View from './components/View.svelte';
 import Renderer from './components/Renderer.svelte';
 import { mount } from 'svelte';
 
@@ -12,6 +12,6 @@ switch (params.get('app')) {
     break;
   case 'view':
   default:
-    mount(App, { target });
+    mount(View, { target });
     break;
 }

@@ -12,7 +12,7 @@
   import Button from './Button.svelte';
   import { parse, supportedMimeTypes } from '../lib/parse';
   import { globalState } from '../lib/global.svelte';
-  import { extractGpsInformation, findPointsOfInterest } from './App';
+  import { extractGpsInformation, findPointsOfInterest } from './View';
   import { type ChartKey, Charts } from './Chart';
   import { riderSvg } from './Map';
   import PickerFull from './PickerFull.svelte';

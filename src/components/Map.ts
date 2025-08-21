@@ -4,7 +4,7 @@ import riderSvg from '../assets/rider-icon.svg?raw';
 import chargeSvg from '../assets/charge-icon.svg?raw';
 import footpadSvg from '../assets/footpad.svg?raw';
 import warningSvg from '../assets/warning.svg?raw';
-import { CHARGE_THRESHOLD_SECONDS, type GpsGap } from '../components/App';
+import { CHARGE_THRESHOLD_SECONDS, type GpsGap } from '../components/View';
 import { type RowWithIndex, State } from '../lib/parse/types';
 
 export interface PointOfInterest {

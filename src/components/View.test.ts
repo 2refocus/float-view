@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 import { render, waitFor } from '@testing-library/svelte';
-import App from './App.svelte';
+import App from './View.svelte';
 import floatyJson from '../lib/parse/__fixtures__/floaty.json';
 
 // Disable dev mode for testing.
