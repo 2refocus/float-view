@@ -5,9 +5,9 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RowKey, type RowWithIndex } from '../../lib/parse/types';
 import { BoardPosition3d, type CreateRenderer, type RendererOptions, type SendProgressUpdate } from './types';
 import boardGlbUrl from '../../assets/board.glb?url';
-import { draw2d } from './2d';
+import { draw2d, getCtxFont } from './2d';
 
-const isWorker = typeof importScripts === 'function';
+const IS_WORKER = typeof importScripts === 'function';
 
 function create2dTexture(
   canvasWidth: number,
@@ -157,26 +157,68 @@ function getCameraVectors(
   lookTarget: THREE.Vector3;
   position: THREE.Vector3;
 } {
-  const y = boardPosition3dRaised ? 5 : 0;
   switch (boardPosition) {
     case BoardPosition3d.Left:
-      return { lookTarget: new THREE.Vector3(0, 0, 2.5), position: new THREE.Vector3(-12, y, 0) };
+      return boardPosition3dRaised
+        ? { lookTarget: new THREE.Vector3(-0.1, -0.1, 2.3), position: new THREE.Vector3(-9.8, 5.4, 1.9) }
+        : { lookTarget: new THREE.Vector3(-0.0, 0.2, 2.3), position: new THREE.Vector3(-10.8, 0.6, -0.2) };
     case BoardPosition3d.Right:
-      return { lookTarget: new THREE.Vector3(0, 0, -2.5), position: new THREE.Vector3(12, y, 0) };
+      return boardPosition3dRaised
+        ? { lookTarget: new THREE.Vector3(-0.0, 0.0, -2.2), position: new THREE.Vector3(9.8, 5.4, -1.8) }
+        : { lookTarget: new THREE.Vector3(0.0, 0.2, -2.3), position: new THREE.Vector3(10.9, 0.6, 0.3) };
     case BoardPosition3d.Front:
-      return { lookTarget: new THREE.Vector3(-2.75, 0, 0), position: new THREE.Vector3(0, y, -10) };
+      return boardPosition3dRaised
+        ? { lookTarget: new THREE.Vector3(-2.3, -0.6, 0.1), position: new THREE.Vector3(-1.3, 5.9, -8.7) }
+        : { lookTarget: new THREE.Vector3(-2.2, 0.1, -0.4), position: new THREE.Vector3(0.0, 0.6, -9.9) };
     case BoardPosition3d.FrontLeft:
-      return { lookTarget: new THREE.Vector3(-3.5, 0, 0), position: new THREE.Vector3(-10, y, -10) };
+      return boardPosition3dRaised
+        ? { lookTarget: new THREE.Vector3(-2.8, 0.7, -0.3), position: new THREE.Vector3(-7.9, 3.5, -6.4) }
+        : { lookTarget: new THREE.Vector3(-2.7, 0.2, -0.5), position: new THREE.Vector3(-7.6, 0.6, -6.5) };
     case BoardPosition3d.FrontRight:
-      return { lookTarget: new THREE.Vector3(-6, 0, 0), position: new THREE.Vector3(10, y, -10) };
+      return boardPosition3dRaised
+        ? { lookTarget: new THREE.Vector3(-4.5, -2.6, 0.2), position: new THREE.Vector3(6.3, 5.2, -7.4) }
+        : { lookTarget: new THREE.Vector3(-5.1, -0.4, 0.2), position: new THREE.Vector3(7.1, 0.6, -6.6) };
     case BoardPosition3d.Back:
-      return { lookTarget: new THREE.Vector3(2.75, 0, 0), position: new THREE.Vector3(0, y, 10) };
+      return boardPosition3dRaised
+        ? { lookTarget: new THREE.Vector3(2.4, -0.8, -0.3), position: new THREE.Vector3(1.1, 6.0, 8.6) }
+        : { lookTarget: new THREE.Vector3(2.2, 0.3, -0.1), position: new THREE.Vector3(-0.1, 0.6, 9.3) };
     case BoardPosition3d.BackLeft:
-      return { lookTarget: new THREE.Vector3(6, 0, 0), position: new THREE.Vector3(-10, y, 10) };
+      return boardPosition3dRaised
+        ? { lookTarget: new THREE.Vector3(5, -2, 0.1), position: new THREE.Vector3(-7, 4.5, 7) }
+        : { lookTarget: new THREE.Vector3(5.0, -0.4, -0.3), position: new THREE.Vector3(-7.1, 0.6, 6.7) };
     case BoardPosition3d.BackRight:
-      return { lookTarget: new THREE.Vector3(3.5, 0, 0), position: new THREE.Vector3(10, y, 10) };
+      return boardPosition3dRaised
+        ? { lookTarget: new THREE.Vector3(2.8, 0.8, -0.1), position: new THREE.Vector3(7.8, 4.9, 5.9) }
+        : { lookTarget: new THREE.Vector3(2.3, 0.3, 0.4), position: new THREE.Vector3(7.0, 0.5, 7.0) };
   }
 }
+
+function createOverlayMesh(width: number, height: number, tex: THREE.Texture): THREE.Mesh {
+  // Create a plane geometry that covers the entire screen
+  const geometry = new THREE.PlaneGeometry(width, height);
+  const material = new THREE.MeshBasicMaterial({
+    map: tex,
+    transparent: true,
+    depthTest: false, // Always render on top
+    depthWrite: false, // Don't write to depth buffer
+  });
+  const mesh = new THREE.Mesh(geometry, material);
+
+  // Position the UI plane
+  mesh.position.set(width / 2, height / 2, 0);
+  return mesh;
+}
+
+const vecToString = (vec: THREE.Vector3) => {
+  const pad = (n: number) => n.toFixed(1).padStart(5, ' ');
+  return `x=${pad(vec.x)} y=${pad(vec.y)} z=${pad(vec.z)}`;
+};
+
+const getLookVector = (camera: THREE.Camera, controls: OrbitControls): THREE.Vector3 => {
+  const direction = camera.getWorldDirection(new THREE.Vector3());
+  const distance = camera.position.distanceTo(controls.target);
+  return camera.position.clone().add(direction.multiplyScalar(distance));
+};
 
 export const create3dRenderer: CreateRenderer = async (canvas, options, sendProgressUpdate) => {
   //
@@ -193,14 +235,14 @@ export const create3dRenderer: CreateRenderer = async (canvas, options, sendProg
   camera.position.copy(cameraVectors.position);
   camera.lookAt(cameraVectors.lookTarget);
 
-  if (!isWorker) {
-    const controls = new OrbitControls(camera, canvas as HTMLCanvasElement);
+  let controls: OrbitControls | null = null;
+  if (!IS_WORKER) {
+    controls = new OrbitControls(camera, canvas as HTMLCanvasElement);
     controls.target.copy(cameraVectors.lookTarget);
     controls.update();
   }
 
-  scene.add(new THREE.AmbientLight('#fff', 1));
-  scene.add(new THREE.AmbientLight('#b1e1ff', 0.5));
+  scene.add(new THREE.AmbientLight('#fff', 5));
   scene.add(new THREE.HemisphereLight('#b1e1ff', '#b97a20', 1.0));
 
   const dirLight = new THREE.DirectionalLight('#ffffff', 0.8);
@@ -232,21 +274,46 @@ export const create3dRenderer: CreateRenderer = async (canvas, options, sendProg
   const uiScene = new THREE.Scene();
   const uiCamera = new THREE.OrthographicCamera(0, canvas.width, canvas.height, 0, -1, 1);
 
-  const { texture: speedGaugeTexture, redraw } = create2dTexture(canvas.width, canvas.height, options);
-  {
-    // Create a plane geometry that covers the entire screen
-    const gaugeGeometry = new THREE.PlaneGeometry(canvas.width, canvas.height);
-    const gaugeMaterial = new THREE.MeshBasicMaterial({
-      map: speedGaugeTexture,
-      transparent: true,
-      depthTest: false, // Always render on top
-      depthWrite: false, // Don't write to depth buffer
-    });
-    const gaugeMesh = new THREE.Mesh(gaugeGeometry, gaugeMaterial);
+  const { texture: ui2dTexture, redraw: render2d } = create2dTexture(canvas.width, canvas.height, options);
+  uiScene.add(createOverlayMesh(canvas.width, canvas.height, ui2dTexture));
 
-    // Position the UI plane
-    gaugeMesh.position.set(canvas.width / 2, canvas.height / 2, 0);
-    uiScene.add(gaugeMesh);
+  let renderDevInfo: (() => void) | null = null;
+  if (!IS_WORKER) {
+    const devCanvas = new OffscreenCanvas(canvas.width, canvas.height);
+    const ctx = devCanvas.getContext('2d')!;
+    const texture = new THREE.CanvasTexture(devCanvas);
+
+    // HTML canvas' origin is top-left, but three.js uses WebGL whose origin is bottom-left.
+    texture.flipY = true;
+    texture.minFilter = THREE.LinearFilter;
+    texture.magFilter = THREE.LinearFilter;
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.needsUpdate = true;
+
+    const fontSize = 24;
+
+    // let lastOutput = Date.now();
+    renderDevInfo = () => {
+      ctx.clearRect(0, 0, devCanvas.width, devCanvas.height);
+
+      ctx.font = getCtxFont(fontSize);
+      ctx.fillStyle = '#ff0000';
+      ctx.fillText(`Camera Position: ${vecToString(camera.position)}`, fontSize, fontSize);
+      ctx.fillText(`Camera Target:   ${vecToString(getLookVector(camera, controls!))}`, fontSize, fontSize * 2);
+      texture.needsUpdate = true;
+
+      // if (Date.now() - lastOutput > 1000) {
+      //   const posi = camera.position;
+      //   const look = getLookVector(camera, controls!);
+      //   console.debug(
+      //     `{ lookTarget: new THREE.Vector3(${look.x.toFixed(1)}, ${look.y.toFixed(1)}, ${look.z.toFixed(1)}), position: new THREE.Vector3(${posi.x.toFixed(1)}, ${posi.y.toFixed(1)}, ${posi.z.toFixed(1)}) }`,
+      //   );
+
+      //   lastOutput = Date.now();
+      // }
+    };
+
+    uiScene.add(createOverlayMesh(canvas.width, canvas.height, texture));
   }
 
   //
@@ -274,7 +341,8 @@ export const create3dRenderer: CreateRenderer = async (canvas, options, sendProg
       }
 
       {
-        redraw(data);
+        render2d(data);
+        renderDevInfo?.();
       }
 
       // render main scene

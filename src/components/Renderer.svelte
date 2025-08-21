@@ -8,7 +8,7 @@
   import rollSvg from '../assets/roll.svg?raw';
   import pitchSvg from '../assets/pitch.svg?raw';
   import riderIconSvg from '../assets/rider-icon.svg?raw';
-  import { type WorkerCommand, type WorkerMessage, type TypedWorker, BoardPosition3d } from './Renderer/types';
+  import { type WorkerCommand, type WorkerMessage, type TypedWorker, BoardPosition3d, type Renderer } from './Renderer/types';
   import { createRenderer } from './Renderer/render';
   import Pill from './Pill.svelte';
 
@@ -221,6 +221,7 @@
   }
 
   let ready = false;
+  let renderer: Renderer | null = null;
   async function drawDebug() {
     if (elDemoContainer && ready) {
       elDemoContainer.innerHTML = '';
@@ -229,8 +230,13 @@
       canvas.width = width;
       canvas.height = height;
 
+      if (renderer) {
+        renderer.close();
+        renderer = null;
+      }
+
       if (renderInUi.v) {
-        const renderer = await createRenderer(
+        renderer = await createRenderer(
           canvas,
           {
             boardPosition3d: boardPosition3d.v,
@@ -244,7 +250,7 @@
 
         if (use3dRenderer.v) {
           requestAnimationFrame(function loop() {
-            if (!renderInUi.v) return;
+            if (!renderInUi.v || !renderer) return;
             renderer.draw(demoRow).then(() => requestAnimationFrame(loop));
           });
         }

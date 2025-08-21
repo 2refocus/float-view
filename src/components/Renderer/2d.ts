@@ -49,7 +49,7 @@ const VALUE_BOX_CONFIGS: ValueBoxConfig[] = [
   { label: 'Temp Mosfet', dataKey: RowKey.TempMosfet, unit: '°C' },
 ];
 
-function getFont(size: number, weight: 'normal' | 'bold' = 'normal'): string {
+export function getCtxFont(size: number, weight: 'normal' | 'bold' = 'normal'): string {
   return `${weight === 'bold' ? 'bold ' : ''}${size}px ${FONT_FAMILY}`;
 }
 
@@ -97,7 +97,7 @@ export function draw2d({
   ctx.fillStyle = colors.fgSubtle;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
-  ctx.font = getFont(Math.max(12, height * 0.025));
+  ctx.font = getCtxFont(Math.max(12, height * 0.025));
   ctx.fillText(import.meta.env.VITE_BUILD_VERSION, width * 0.5, height * (1 - 0.025));
 
   const gaugeWidth = width * 0.5 - 2 * padding;
@@ -274,7 +274,7 @@ function drawPitchAndRoll(params: BoardParams) {
 
     // draw arrow indicating front
     ctx.fillStyle = 'white';
-    ctx.font = getFont(w * 0.15);
+    ctx.font = getCtxFont(w * 0.15);
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('➡', 0, 3);
@@ -311,7 +311,7 @@ function drawPitchAndRoll(params: BoardParams) {
     const valueX = w - labelX;
 
     const f = 0.07;
-    ctx.font = getFont(w * f, 'bold');
+    ctx.font = getCtxFont(w * f, 'bold');
     ctx.textAlign = 'left';
     ctx.fillStyle = colors.fgSubtle;
     ctx.fillText('Roll:', labelX, w * f);
@@ -392,15 +392,15 @@ export function drawGauge({ label, ctx, x, y, w, h, value, valueStr, unit, minVa
   // Draw labels
   ctx.fillStyle = colors.fg;
   ctx.textAlign = 'center';
-  ctx.font = getFont(Math.max(12, w * 0.08));
+  ctx.font = getCtxFont(Math.max(12, w * 0.08));
   ctx.fillText(label, centerX, y + h * 0.08);
 
   ctx.fillStyle = value < 0 ? colors.fgAlternate : colors.fg;
-  ctx.font = getFont(Math.max(16, w * 0.06), 'bold');
+  ctx.font = getCtxFont(Math.max(16, w * 0.06), 'bold');
   ctx.fillText(`${valueStr} ${unit}`, centerX, centerY + radius * -0.2);
 
   // Draw min/max labels
-  ctx.font = getFont(Math.max(10, w * 0.075));
+  ctx.font = getCtxFont(Math.max(10, w * 0.075));
   ctx.fillStyle = colors.fgSubtle;
   ctx.textAlign = 'left';
   ctx.fillText(minValue.toString(), centerX - radius * 0.5, centerY + radius * 0.7);
@@ -427,12 +427,12 @@ function drawValueBox({ label, ctx, x, y, w, h, value, unit }: ValueBoxParams) {
   // Draw label
   ctx.fillStyle = colors.fgSubtle;
   ctx.textAlign = 'center';
-  ctx.font = getFont(Math.max(10, w * 0.08));
+  ctx.font = getCtxFont(Math.max(10, w * 0.08));
   ctx.fillText(label, x + w / 2, y + h * 0.35);
 
   // Draw value
   ctx.fillStyle = value < 0 ? colors.fgAlternate : colors.fg;
-  ctx.font = getFont(Math.max(14, w * 0.12), 'bold');
+  ctx.font = getCtxFont(Math.max(14, w * 0.12), 'bold');
   const displayValue = Math.abs(value) < 0.1 ? value.toFixed(2) : value.toFixed(1);
   ctx.fillText(`${displayValue} ${unit}`, x + w / 2, y + h * 0.75);
 }
@@ -463,7 +463,7 @@ function drawFootpad(params: FootpadParams) {
     const valueX = w - labelX;
 
     const f = 0.07;
-    ctx.font = getFont(w * f, 'bold');
+    ctx.font = getCtxFont(w * f, 'bold');
     ctx.textAlign = 'left';
     ctx.fillStyle = colors.fgSubtle;
     ctx.fillText('ADC1:', labelX, w * f);
@@ -491,7 +491,6 @@ function drawFootpad(params: FootpadParams) {
 
     ctx.save();
     ctx.translate(x, y);
-    ctx.globalAlpha = 0.5;
 
     // footpad outline
     ctx.strokeStyle = '#ffffff';
