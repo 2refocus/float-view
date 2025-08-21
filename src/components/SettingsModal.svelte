@@ -5,6 +5,7 @@
   import Modal from './Modal.svelte';
   import settings, { localStorageKey } from '../lib/settings.svelte';
   import type { ChangeEventHandler } from 'svelte/elements';
+  import Button from './Button.svelte';
 
   let isImperial = $derived(settings.units === Units.Imperial);
   $effect(() => {
@@ -108,6 +109,11 @@
       <p>
         <strong>TIP:</strong> use the left and right arrows to step through one data point at a time!
       </p>
+    </div>
+    <div class="flex flex-row justify-center align-center">
+      <a href="/?app=renderer">
+        <Button>Looking for Float Renderer? Click here!</Button>
+      </a>
     </div>
   </div>
 </Modal>

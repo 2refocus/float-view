@@ -1,4 +1,5 @@
 <script lang="ts" module>
+  import { onMount } from 'svelte';
   import type { HTMLInputAttributes } from 'svelte/elements';
   export interface Props extends HTMLInputAttributes {
     id: string;
@@ -14,7 +15,7 @@
     label,
     type,
     defaultValue,
-    value = $bindable(defaultValue),
+    value = $bindable(),
     checked = $bindable(),
     title = label,
     inline = false,
@@ -23,6 +24,12 @@
   }: Props = $props();
 
   let alignClass = $derived(type === 'number' ? 'text-right' : 'text-left');
+
+  onMount(() => {
+    if (value === undefined) {
+      value = defaultValue;
+    }
+  });
 </script>
 
 <div class="{inline ? 'inline-flex' : 'flex'} flex-row space-between {propClass}">

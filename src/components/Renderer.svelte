@@ -396,7 +396,7 @@
   </div>
 {/snippet}
 
-<div class="bg-slate-900">
+<div class="bg-slate-900 min-h-screen">
   {#if fullscreenPreview.v}
     <div class="flex flex-row items-center h-screen w-screen">
       <div
@@ -415,7 +415,7 @@
       <div class="h-screen" bind:this={elDemoContainer}></div>
     </div>
   {:else}
-    <div class="max-w-7xl p-6 m-auto bg-slate-900 min-h-screen">
+    <div class="max-w-7xl p-6 m-auto bg-slate-900">
       <!-- Hero Section with Styled Title -->
       <div class="text-center space-y-4 pb-2">
         <div class="flex justify-center items-center space-x-4">
@@ -434,7 +434,7 @@
         </div>
         <div class="relative max-w-2xl mx-auto">
           <p class="text-xl md:text-2xl text-slate-300 font-light tracking-wide">
-            Transform your
+            Convert your
             <span class="text-transparent bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text font-semibold"
               >recorded ride</span
             >
@@ -578,4 +578,10 @@
       </div>
     </div>
   {/if}
+
+  <div class="flex flex-row justify-center align-center">
+    <a href="/?app=view">
+      <Button>Looking for Float View? Click here!</Button>
+    </a>
+  </div>
 </div>
