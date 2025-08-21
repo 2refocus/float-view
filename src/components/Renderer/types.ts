@@ -13,6 +13,7 @@ export type WorkerCommandDef = {
   draw: {
     canvas: OffscreenCanvas;
     drawRemoteTilt: boolean;
+    backgroundColor: string;
     boardPosition3d: BoardPosition3d;
     boardPosition3dRaised: boolean;
     use3dRenderer: boolean;
@@ -31,6 +32,7 @@ export type WorkerCommandDef = {
     canvas: OffscreenCanvas;
     interpolate: boolean;
     drawRemoteTilt: boolean;
+    backgroundColor: string;
     boardPosition3d: BoardPosition3d;
     boardPosition3dRaised: boolean;
     use3dRenderer: boolean;
@@ -114,6 +116,7 @@ export enum BoardPosition3d {
 }
 
 export interface RendererOptions {
+  backgroundColor: string;
   boardPosition3d: BoardPosition3d;
   boardPosition3dRaised: boolean;
 

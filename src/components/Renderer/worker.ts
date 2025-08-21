@@ -1,6 +1,6 @@
 import { RowKey } from '../../lib/parse/types';
 import { parse } from '../../lib/parse';
-import type { WorkerCommand, WorkerCommandDef, Renderer, BoardPosition3d } from './types';
+import type { WorkerCommand, WorkerCommandDef, Renderer } from './types';
 import { VideoFileWriter, VideoFileManager } from './files';
 import { fatal, log, postUpdateMessage } from './messaging';
 import { interpolate, VideoFrameData, VideoSegmentManager } from './data';
@@ -37,6 +37,7 @@ self.addEventListener('message', async (e) => {
         command.canvas,
         {
           drawRemoteTilt: command.drawRemoteTilt,
+          backgroundColor: command.backgroundColor,
           boardPosition3d: command.boardPosition3d,
           boardPosition3dRaised: command.boardPosition3dRaised,
           images,
@@ -88,19 +89,6 @@ self.addEventListener('message', async (e) => {
   }
 });
 
-interface VideoGeneratorOptions {
-  fps: number;
-  width: number;
-  height: number;
-  canvas: OffscreenCanvas;
-  interpolate: boolean;
-  drawRemoteTilt: boolean;
-  boardPosition3d: BoardPosition3d;
-  boardPosition3dRaised: boolean;
-  use3dRenderer: boolean;
-  images: Record<string, ImageBitmap>;
-}
-
 interface ProgressCallback {
   onFrameEncoded: (timestampMicros: number) => void;
   shouldStop: () => boolean;
@@ -111,7 +99,7 @@ class VideoGenerator {
   private frameDurationMicros: number;
   private backoffThreshold: number;
 
-  constructor(private options: VideoGeneratorOptions) {
+  constructor(private options: WorkerCommandDef['start'] & { images: Record<string, ImageBitmap> }) {
     this.frameDurationMicros = 1_000_000 / options.fps;
     this.backoffThreshold = options.fps * 2;
   }
@@ -126,6 +114,7 @@ class VideoGenerator {
       this.options.canvas,
       {
         drawRemoteTilt: this.options.drawRemoteTilt,
+        backgroundColor: this.options.backgroundColor,
         boardPosition3d: this.options.boardPosition3d,
         boardPosition3dRaised: this.options.boardPosition3dRaised,
         images: this.options.images,
@@ -288,34 +277,11 @@ class VideoGenerator {
   }
 }
 
-async function generateVideo({
-  directoryHandle,
-  fps,
-  width,
-  height,
-  canvas,
-  filename,
-  use3dRenderer,
-  boardPosition3d,
-  boardPosition3dRaised,
-  interpolate = false,
-  drawRemoteTilt = false,
-}: WorkerCommandDef['start']) {
+async function generateVideo(options: WorkerCommandDef['start']) {
   log('Setting up video generator...');
 
-  const generator = new VideoGenerator({
-    fps,
-    width,
-    height,
-    canvas,
-    interpolate,
-    drawRemoteTilt,
-    boardPosition3d,
-    boardPosition3dRaised,
-    use3dRenderer,
-    images,
-  });
-
+  const generator = new VideoGenerator({ ...options, images });
+  const { directoryHandle, fps, canvas, filename, interpolate } = options;
   const fileManager = new VideoFileManager(directoryHandle);
 
   try {

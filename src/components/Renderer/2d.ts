@@ -4,7 +4,6 @@ import type { Canvas, Ctx } from './svg';
 import { FONT_FAMILY } from './render';
 
 const colors = {
-  bg: '#1e293b',
   fg: '#ffffff',
   fgSubtle: '#cccccc',
   fgAlternate: '#ffcc00',
@@ -57,6 +56,7 @@ export interface DrawParams {
   canvas: Canvas;
   ctx: Ctx;
   data: RowWithIndex;
+  backgroundColor: string;
   images: Record<string, ImageBitmap>;
 
   drawBackground?: boolean;
@@ -64,11 +64,12 @@ export interface DrawParams {
   drawRemoteTilt?: boolean;
 }
 
-export const create2dRenderer: CreateRenderer = async (canvas, { drawRemoteTilt, images }) => {
+export const create2dRenderer: CreateRenderer = async (canvas, { backgroundColor, drawRemoteTilt, images }) => {
   const ctx = canvas.getContext('2d')! as Ctx;
   return {
     close: () => {},
-    draw: (data: RowWithIndex) => Promise.resolve(draw2d({ canvas, ctx, data, drawRemoteTilt, images })),
+    draw: (data: RowWithIndex) =>
+      Promise.resolve(draw2d({ canvas, ctx, data, backgroundColor, drawRemoteTilt, images })),
   };
 };
 
@@ -78,6 +79,7 @@ export function draw2d({
   ctx,
   data,
   images,
+  backgroundColor,
   drawBoard = true,
   drawBackground = true,
   drawRemoteTilt = false,
@@ -85,7 +87,7 @@ export function draw2d({
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   if (drawBackground) {
-    ctx.fillStyle = colors.bg;
+    ctx.fillStyle = backgroundColor;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   }
 

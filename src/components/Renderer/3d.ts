@@ -36,6 +36,7 @@ function create2dTexture(
       drawBoard: false,
       drawBackground: false,
       drawRemoteTilt: options.drawRemoteTilt,
+      backgroundColor: options.backgroundColor,
       images: options.images,
     });
     texture.needsUpdate = true;
@@ -226,7 +227,7 @@ export const create3dRenderer: CreateRenderer = async (canvas, options, sendProg
   //
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color('#1e293b');
+  scene.background = new THREE.Color(options.backgroundColor);
   const camera = new THREE.PerspectiveCamera(75, canvas.width / canvas.height, 0.1, 1000);
   const renderer = new THREE.WebGLRenderer({ canvas });
   renderer.autoClear = false;

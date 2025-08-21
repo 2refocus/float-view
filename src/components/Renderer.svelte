@@ -26,9 +26,12 @@
   class SavedState<T> {
     private readonly k: string;
     public v = $state<T>(undefined as unknown as T);
+    public readonly default: T;
+
     constructor(key: string, defaultValue: T) {
       this.k = key;
       this.v = defaultValue;
+      this.default = defaultValue;
 
       const saved = localStorage.getItem(this.k);
       if (saved !== null) {
@@ -65,6 +68,7 @@
   let boardPosition3dRaised = new SavedState('boardPosition3dRaised', false);
   let renderInUi = import.meta.env.DEV ? new SavedState('renderInUi', false) : { v: false };
   let fullscreenPreview = import.meta.env.DEV ? new SavedState('fullscreenPreview', false) : { v: false };
+  let backgroundColor = new SavedState('backgroundColor', '#1e293b');
   let inputFps = new SavedState('inputFps', '');
   let inputWidth = new SavedState('inputWidth', '');
   let inputHeight = new SavedState('inputHeight', '');
@@ -93,6 +97,7 @@
     showRemoteTilt.v;
     use3dRenderer.v;
     renderInUi.v;
+    backgroundColor.v;
     boardPosition3d.v;
     boardPosition3dRaised.v;
     drawDebug();
@@ -192,6 +197,7 @@
         width,
         height,
         canvas,
+        backgroundColor: backgroundColor.v,
         boardPosition3d: boardPosition3d.v,
         boardPosition3dRaised: boardPosition3dRaised.v,
         interpolate: interpolate.v,
@@ -245,6 +251,7 @@
         renderer = await createRenderer(
           canvas,
           {
+            backgroundColor: backgroundColor.v,
             boardPosition3d: boardPosition3d.v,
             boardPosition3dRaised: boardPosition3dRaised.v,
             drawRemoteTilt: showRemoteTilt.v,
@@ -267,6 +274,7 @@
             type: 'draw',
             canvas: offscreen,
             data: demoRow,
+            backgroundColor: backgroundColor.v,
             boardPosition3d: boardPosition3d.v,
             boardPosition3dRaised: boardPosition3dRaised.v,
             drawRemoteTilt: showRemoteTilt.v,
@@ -335,6 +343,20 @@
       defaultValue={inputHeight.v}
       placeholder={`${defaultHeight}`}
       onblur={(e) => (inputHeight.v = e.currentTarget.value)}
+    />
+    <Input
+      id="backgroundColor"
+      label="Background Color"
+      type="text"
+      placeholder={backgroundColor.default}
+      defaultValue={backgroundColor.v}
+      onblur={(e) => {
+        backgroundColor.v = e.currentTarget.value;
+        if (!backgroundColor.v.trim()) {
+          backgroundColor.v = backgroundColor.default;
+          e.currentTarget.value = backgroundColor.v;
+        }
+      }}
     />
     <Input
       id="startingIndex"
