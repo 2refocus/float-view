@@ -580,7 +580,7 @@
   {/if}
 
   <div class="flex flex-row justify-center align-center">
-    <a href="/?app=view">
+    <a href="/float-view/?app=view">
       <Button>Looking for Float View? Click here!</Button>
     </a>
   </div>
