@@ -8,7 +8,13 @@
   import rollSvg from '../assets/roll.svg?raw';
   import pitchSvg from '../assets/pitch.svg?raw';
   import riderIconSvg from '../assets/rider-icon.svg?raw';
-  import { type WorkerCommand, type WorkerMessage, type TypedWorker, BoardPosition3d, type Renderer } from './Renderer/types';
+  import {
+    type WorkerCommand,
+    type WorkerMessage,
+    type TypedWorker,
+    BoardPosition3d,
+    type Renderer,
+  } from './Renderer/types';
   import { createRenderer } from './Renderer/render';
   import Pill from './Pill.svelte';
 
@@ -351,17 +357,29 @@
       label="Interpolate data points (smooth transitions)"
     />
     <Input id="showRemoteTilt" type="checkbox" bind:checked={showRemoteTilt.v} label="Show Remote Tilt" />
-    <Input id="use3dRenderer" type="checkbox" bind:checked={use3dRenderer.v} label="3D Renderer" />
+    <div class="flex flex-row justify-between gap-2">
+      <Pill text="beta" appearance="lime" />
+      <Input class="grow" id="use3dRenderer" type="checkbox" bind:checked={use3dRenderer.v} label="3D Renderer" />
+    </div>
     {#if use3dRenderer.v}
       <div class="flex items-center justify-between space-x-2">
-        <label for="boardPosition3d">View board from:</label>
+        <label for="boardPosition3d"><Pill text="beta" appearance="lime" /> View board from:</label>
         <select bind:value={boardPosition3d.v} id="boardPosition3d" class="bg-slate-950/50 border rounded-lg px-2">
           {#each Object.values(BoardPosition3d) as position}
             <option value={position}>{position.charAt(0).toUpperCase() + position.slice(1)}</option>
           {/each}
         </select>
       </div>
-      <Input id="boardPosition3dRaised" type="checkbox" bind:checked={boardPosition3dRaised.v} label="Lift Camera Up" />
+      <div class="flex flex-row justify-between gap-2">
+        <Pill text="beta" appearance="lime" />
+        <Input
+          class="grow"
+          id="boardPosition3dRaised"
+          type="checkbox"
+          bind:checked={boardPosition3dRaised.v}
+          label="Lift Camera Up"
+        />
+      </div>
     {/if}
     {#if import.meta.env.DEV}
       <div class="flex items-center justify-center space-x-2">

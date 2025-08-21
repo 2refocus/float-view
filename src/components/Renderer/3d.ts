@@ -348,9 +348,13 @@ export const create3dRenderer: CreateRenderer = async (canvas, options, sendProg
       // render main scene
       renderer.clear();
       renderer.render(scene, camera);
-      // render text scene on top
+      // render ui scene on top
       renderer.render(uiScene, uiCamera);
 
+      // HACK: seems like there's a delay between when three.js finishes rendering to the canvas
+      // to when the data is available on the canvas, and I'm not sure if it's possible to know
+      // exactly when rendering is complete... This seems to fix it at a large performance cost.
+      await new Promise((resolve) => requestAnimationFrame(resolve));
       await new Promise((resolve) => requestAnimationFrame(resolve));
       await new Promise((resolve) => requestAnimationFrame(resolve));
     },
