@@ -23,6 +23,11 @@ export const speedMapper = (inUnit: Units, outUnit: Units): ((input: number) => 
 
 export const formatFloat = (n: number | undefined, allowInt = false) => {
   if (typeof n !== 'number' || Number.isNaN(n)) return '??';
-  if (allowInt && Number.isInteger(n)) return n.toString();
+  if (allowInt && Number.isInteger(n)) return formatInt(n);
   return n.toFixed(1);
+};
+
+export const formatInt = (n: number | undefined, allowInt = false) => {
+  if (typeof n !== 'number' || Number.isNaN(n)) return '??';
+  return n.toString();
 };

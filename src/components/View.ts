@@ -2,6 +2,112 @@ import { DataSource, State, type RowWithIndex } from '../lib/parse/types';
 import settings from '../lib/settings.svelte';
 import type { PointOfInterest } from './Map';
 
+export interface RideStats {
+  totalHalfFaults: number;
+  totalFullFaults: number;
+  totalQuickStops: number;
+  highestPitch: number;
+  lowestPitch: number;
+  highestRoll: number;
+  lowestRoll: number;
+  highestSpeed: number;
+  averageSpeed: number;
+  highestErpm: number;
+  highestDuty: number;
+  averageDuty: number;
+  highestMotorCurrent: number;
+  highestFieldWeakeningCurrent: number;
+  highestTempMotor: number;
+  highestTempController: number;
+  totalDistanceMeters: number;
+}
+
+export function computeStats(rows: RowWithIndex[], pois: PointOfInterest[]): RideStats {
+  let totalHalfFaults = 0;
+  let totalFullFaults = 0;
+  let totalQuickStops = 0;
+
+  for (const poi of pois) {
+    const state = poi.state;
+    if (state === State.Custom_OneFootpadAtSpeed) {
+      totalHalfFaults += 1;
+    } else if (state === State.Custom_NoFootpadsAtSpeed) {
+      totalFullFaults += 1;
+    } else if (state === State.Quickstop) {
+      totalQuickStops += 1;
+    }
+  }
+
+  let highestPitch = NaN;
+  let lowestPitch = NaN;
+  let highestRoll = NaN;
+  let lowestRoll = NaN;
+  let highestSpeed = NaN;
+  let speedSum = 0;
+  let highestErpm = NaN;
+  let highestDuty = NaN;
+  let dutySum = 0;
+  let highestMotorCurrent = NaN;
+  let highestFieldWeakeningCurrent = NaN;
+  let highestTempMotor = NaN;
+  let highestTempController = NaN;
+
+  for (const row of rows) {
+    // pitch/roll
+    if (!highestPitch || row.pitch > highestPitch) highestPitch = row.pitch;
+    if (!lowestPitch || row.pitch < lowestPitch) lowestPitch = row.pitch;
+    if (!highestRoll || row.roll > highestRoll) highestRoll = row.roll;
+    if (!lowestRoll || row.roll < lowestRoll) lowestRoll = row.roll;
+
+    // speed
+    if (!highestSpeed || row.speed > highestSpeed) highestSpeed = row.speed;
+    speedSum += row.speed;
+
+    // erpm/duty
+    if (row.erpm) {
+      if (!highestErpm || row.erpm > highestErpm) highestErpm = row.erpm;
+    }
+    if (!highestDuty || row.duty > highestDuty) highestDuty = row.duty;
+    dutySum += row.duty;
+
+    // currents
+    if (!highestMotorCurrent || row.current_motor > highestMotorCurrent) highestMotorCurrent = row.current_motor;
+    if (row.current_field_weakening) {
+      if (!highestFieldWeakeningCurrent || row.current_field_weakening > highestFieldWeakeningCurrent)
+        highestFieldWeakeningCurrent = row.current_field_weakening;
+    }
+
+    // temperatures
+    if (!highestTempMotor || row.temp_motor > highestTempMotor) highestTempMotor = row.temp_motor;
+    if (row.temp_mosfet) {
+      if (!highestTempController || row.temp_mosfet > highestTempController) highestTempController = row.temp_mosfet;
+    }
+  }
+
+  const averageSpeed = rows.length > 0 ? speedSum / rows.length : 0;
+  const averageDuty = rows.length > 0 ? dutySum / rows.length : 0;
+
+  return {
+    totalHalfFaults,
+    totalFullFaults,
+    totalQuickStops,
+    highestPitch,
+    lowestPitch,
+    highestRoll,
+    lowestRoll,
+    highestSpeed,
+    averageSpeed,
+    highestErpm,
+    highestDuty,
+    averageDuty,
+    highestMotorCurrent,
+    highestFieldWeakeningCurrent,
+    highestTempMotor,
+    highestTempController,
+    totalDistanceMeters: rows[rows.length - 1]!.distance,
+  };
+}
+
 export const RIDE_GAP_THRESHOLD_SECONDS = 60;
 export const CHARGE_THRESHOLD_SECONDS = 600;
 const DEFAULT_CHARGE_THRESHOLD_VOLTS = 2.5;

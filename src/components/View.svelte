@@ -12,7 +12,7 @@
   import Button from './Button.svelte';
   import { parse, supportedMimeTypes } from '../lib/parse';
   import { globalState } from '../lib/global.svelte';
-  import { extractGpsInformation, findPointsOfInterest } from './View';
+  import { computeStats, extractGpsInformation, findPointsOfInterest, type RideStats } from './View';
   import { type ChartKey, Charts } from './Chart';
   import { riderSvg } from './Map';
   import PickerFull from './PickerFull.svelte';
@@ -29,6 +29,31 @@
   let { gpsPoints, gpsGaps } = $derived(extractGpsInformation(rows, source));
   /** entire list of states from `rows` */
   let pointsOfInterest = $derived(findPointsOfInterest(rows));
+
+  /** computed stats from row data */
+  let stats = $state<RideStats>(
+    import.meta.env.DEV
+      ? computeStats(demoRows, findPointsOfInterest(demoRows))
+      : {
+          totalHalfFaults: 0,
+          totalFullFaults: 0,
+          totalQuickStops: 0,
+          highestPitch: 0,
+          lowestPitch: 0,
+          highestRoll: 0,
+          lowestRoll: 0,
+          highestSpeed: 0,
+          averageSpeed: 0,
+          highestErpm: 0,
+          highestDuty: 0,
+          averageDuty: 0,
+          highestMotorCurrent: 0,
+          highestFieldWeakeningCurrent: 0,
+          highestTempMotor: 0,
+          highestTempController: 0,
+          totalDistanceMeters: 0,
+        },
+  );
 
   /** array-as-map of whether particular rows are visible or not */
   let visible = $state<boolean[]>([]);
@@ -89,6 +114,8 @@
 
           rows = results.data;
           selectedIndex = 0;
+
+          stats = computeStats(rows, pointsOfInterest);
         })
         .finally(() => (loading = false));
     }
@@ -221,7 +248,7 @@
     wide:[grid-column:span_2] wide:[grid-row:unset]"
     class:details-swapped={swapMapAndDetails}
   >
-    <Details data={visibleRows[selectedIndex]} batterySpecs={settings.batterySpecs} units={settings.units} />
+    <Details {stats} data={visibleRows[selectedIndex]} batterySpecs={settings.batterySpecs} units={settings.units} />
   </div>
 
   {#each settings.charts as key, index}

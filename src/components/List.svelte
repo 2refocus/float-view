@@ -3,7 +3,7 @@
 
   export type ListItem =
     | {
-        label: string;
+        label?: string;
         value: string | Snippet;
         color?: string;
         htmlTitle?: string;
@@ -19,16 +19,23 @@
   let { items }: Props = $props();
 </script>
 
-<div class="flex w-[90%] flex-col font-mono">
+<div class="flex w-[90%] flex-col font-mono my-10">
   {#each items as item, i (i)}
     <div class="flex flex-row justify-between items-center">
       {#if typeof item === 'string'}
         <hr class="mx-auto my-2 border-slate-700" />
       {:else}
-        <div class="truncate text-slate-500" title={item.htmlTitle ?? item.label}>
-          {item.label}:
-        </div>
-        <div class="grow whitespace-nowrap text-right" style:color={item.color}>
+        {#if item.label}
+          <div class="truncate text-slate-500" title={item.htmlTitle ?? item.label}>
+            {item.label}:
+          </div>
+        {/if}
+        <div
+          class="grow whitespace-nowrap"
+          class:text-right={!!item.label}
+          class:text-center={!item.label}
+          style:color={item.color}
+        >
           {#if typeof item.value === 'string'}
             {item.value}
           {:else}
