@@ -52,9 +52,7 @@ const settings = new (class {
   /** user selected units */
   units = $state(savedSettings?.units ?? Units.Metric);
   /** faults to hide from the map */
-  hiddenStates = $state<State[]>(
-    savedSettings?.hiddenStates ?? [State.Startup, State.StopHalf, State.Custom_OneFootpadAtSpeed],
-  );
+  hiddenStates = $state<State[]>(savedSettings?.hiddenStates ?? [State.Startup, State.StopHalf]);
 
   /** user-defined cell count */
   cellCount = $state<number | undefined>(savedSettings?.batterySpecs.cellCount ?? undefined);
