@@ -108,7 +108,7 @@
           // FIXME: handle parse errors
           if (results.error) {
             console.error(results.error, results.error.cause);
-            alert(`An error occurred when parsing: ${results.error.message}`);
+            alert(`An error occurred when parsing: ${results.error.message} (${import.meta.env.VITE_BUILD_VERSION})`);
             return;
           }
 
