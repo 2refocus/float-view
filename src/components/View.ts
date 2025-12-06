@@ -60,7 +60,7 @@ export function computeStats(rows: RowWithIndex[], pois: PointOfInterest[]): Rid
     if (!lowestRoll || row.roll < lowestRoll) lowestRoll = row.roll;
 
     // speed
-    if (!highestSpeed || row.speed > highestSpeed) highestSpeed = row.speed;
+    if (!highestSpeed || Math.abs(row.speed) > highestSpeed) highestSpeed = Math.abs(row.speed);
     speedSum += row.speed;
 
     // erpm/duty
