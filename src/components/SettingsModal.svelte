@@ -110,10 +110,20 @@
         <strong>TIP:</strong> use the left and right arrows to step through one data point at a time!
       </p>
     </div>
+
     <div class="flex flex-row justify-center align-center">
       <a href="/float-view/?app=renderer">
         <Button>Looking for Float Renderer? Click here!</Button>
       </a>
     </div>
+
+    {#if window.location.href.includes('test')}
+      <div class="mt-2 flex flex-row gap-2">
+        <Button onclick={() => window.location.reload()}>Reload</Button>
+        <Button onclick={() => (window.location.href = window.location.href.split('?')[0] + '?t=' + Date.now())}
+          >Revisit</Button
+        >
+      </div>
+    {/if}
   </div>
 </Modal>
