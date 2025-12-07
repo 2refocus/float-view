@@ -2,6 +2,11 @@ import { DataSource, State, type RowWithIndex } from '../lib/parse/types';
 import settings from '../lib/settings.svelte';
 import type { PointOfInterest } from './Map';
 
+export interface Banner {
+  text: string;
+  kind: 'info' | 'warning' | 'error';
+}
+
 export interface RideStats {
   totalHalfFaults: number;
   totalFullFaults: number;

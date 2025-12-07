@@ -3,6 +3,7 @@ import { floatControlKeyMap, FloatControlRawHeader } from './float-control.types
 import demoCsv from '../../assets/demo.csv?raw';
 import { attachIndex } from '../misc';
 import { RowKey, State, type Row, type RowWithIndex, Units } from './types';
+import { FloatControlLimitedError, ParseError } from './errors';
 
 const transformHeader = (header: string) => {
   const key = floatControlKeyMap[header as FloatControlRawHeader];
@@ -62,12 +63,24 @@ const parseOptions = {
 export interface FloatControlData {
   csv: ParseResult<RowWithIndex>;
   units: Units;
+  errors: Error[];
 }
 
-export function parseFloatControlCsv(input: string | File): Promise<FloatControlData> {
+export async function parseFloatControlCsv(input: string | File): Promise<FloatControlData> {
+  let errors: Error[] = [];
+
+  // Detect if the ride has been trimmed due to Float Control's recent update which requires payment for full ride logs.
+  let text = typeof input === 'string' ? input : await input.text();
+  const lastLineStart = text.trimEnd().lastIndexOf('\n');
+  const lastLine = text.slice(lastLineStart);
+  if (/upgrade/i.test(lastLine)) {
+    text = text.slice(0, lastLineStart);
+    errors.push(new FloatControlLimitedError());
+  }
+
   let units = Units.Imperial;
   return new Promise((resolve) => {
-    csv.parse<Row>(input, {
+    csv.parse<Row>(text, {
       ...parseOptions,
       transformHeader: (header: string) => {
         if (header === FloatControlRawHeader.SpeedKm || header === FloatControlRawHeader.DistanceKm) {
@@ -76,11 +89,18 @@ export function parseFloatControlCsv(input: string | File): Promise<FloatControl
 
         return transformHeader(header);
       },
+
       complete: (results) => {
         results.data = attachIndex(results.data);
+
+        if (results.errors.length > 0) {
+          errors.push(new ParseError('Failed to parse Float Control CSV properly!', results.errors));
+        }
+
         resolve({
           csv: results as ParseResult<RowWithIndex>,
           units,
+          errors,
         });
       },
     });

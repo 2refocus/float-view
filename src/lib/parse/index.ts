@@ -3,21 +3,13 @@ import * as fflate from 'fflate';
 import { parseFloatControlCsv } from './float-control';
 import { parseFloatyJson } from './floaty';
 import { DataSource, Units, type RowWithIndex } from './types';
-
-export class ParseError extends Error {
-  constructor(
-    public readonly message: string,
-    public readonly cause: unknown,
-  ) {
-    super(message);
-  }
-}
+import { ParseError } from './errors';
 
 export interface ParseResult {
   data: RowWithIndex[];
   units: Units;
   source: DataSource;
-  error?: Error;
+  errors: Error[];
 }
 
 export enum SupportedMimeTypes {
@@ -43,7 +35,7 @@ export async function parse(file: File): Promise<ParseResult> {
         source: DataSource.None,
         data: [],
         units: Units.Metric,
-        error: new ParseError('Expected a zip containing a single CSV file from Float Control!', file),
+        errors: [new ParseError('Expected a zip containing a single CSV file from Float Control!', file)],
       };
     }
 
@@ -53,10 +45,7 @@ export async function parse(file: File): Promise<ParseResult> {
       source: DataSource.FloatControl,
       data: parsed.csv.data,
       units: parsed.units,
-      error:
-        parsed.csv.errors.length > 0
-          ? new ParseError('Failed to parse Float Control CSV properly!', parsed.csv.errors)
-          : undefined,
+      errors: parsed.errors,
     };
   }
 
@@ -66,10 +55,7 @@ export async function parse(file: File): Promise<ParseResult> {
       source: DataSource.FloatControl,
       data: parsed.csv.data,
       units: parsed.units,
-      error:
-        parsed.csv.errors.length > 0
-          ? new ParseError('Failed to parse Float Control CSV properly!', parsed.csv.errors)
-          : undefined,
+      errors: parsed.errors,
     };
   }
 
@@ -81,6 +67,6 @@ export async function parse(file: File): Promise<ParseResult> {
     source: DataSource.None,
     data: [],
     units: Units.Metric,
-    error: new ParseError('Unrecognised file!', file),
+    errors: [new ParseError('Unrecognised file!', file)],
   };
 }

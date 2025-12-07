@@ -164,7 +164,7 @@
         }
         return;
       case 'fatal':
-        alert(`Error: ${msg.message} (${import.meta.env.VITE_BUILD_VERSION})`);
+        alert(`Error: ${msg.message}`);
         isRendering = false;
         return;
       default:

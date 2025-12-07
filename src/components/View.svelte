@@ -12,10 +12,11 @@
   import Button from './Button.svelte';
   import { parse, supportedMimeTypes } from '../lib/parse';
   import { globalState } from '../lib/global.svelte';
-  import { computeStats, extractGpsInformation, findPointsOfInterest, type RideStats } from './View';
+  import { computeStats, extractGpsInformation, findPointsOfInterest, type Banner, type RideStats } from './View';
   import { type ChartKey, Charts } from './Chart';
   import { riderSvg } from './Map';
   import PickerFull from './PickerFull.svelte';
+  import { FloatControlLimitedError, ParseError } from '../lib/parse/errors';
 
   /** source of data*/
   let source = $state(DataSource.None);
@@ -54,6 +55,8 @@
           totalDistanceMeters: 0,
         },
   );
+
+  let banners = $state<Banner[]>([]);
 
   /** array-as-map of whether particular rows are visible or not */
   let visible = $state<boolean[]>([]);
@@ -105,11 +108,18 @@
 
           globalState.unitsFromData = results.units;
           source = results.source;
-          // FIXME: handle parse errors
-          if (results.error) {
-            console.error(results.error, results.error.cause);
-            alert(`An error occurred when parsing: ${results.error.message} (${import.meta.env.VITE_BUILD_VERSION})`);
-            return;
+
+          for (const err of results.errors) {
+            if (err instanceof FloatControlLimitedError) {
+              banners.push({ text: err.message, kind: 'warning' });
+            }
+
+            if (err instanceof ParseError) {
+              console.error(err, err.cause);
+              alert(
+                `An error occurred when parsing ride, displayed data may be incomplete or incorrect! (${err.message})`,
+              );
+            }
           }
 
           rows = results.data;
@@ -202,6 +212,13 @@
   };
 </script>
 
+{#snippet bannerComponent(banner: Banner, index: number)}
+  <div class="flex flex-row justify-between items-center gap-4">
+    {banner.text}
+    <button class="text-right font-mono underline text-sm" onclick={() => banners.splice(index, 1)}>close</button>
+  </div>
+{/snippet}
+
 <Header bind:file />
 
 <main
@@ -216,6 +233,26 @@
 >
   <SettingsModal />
   <PickerFull bind:file bind:loading {ondragenter} />
+
+  {#if banners.length}
+    <div class="wide:[grid-column:span_3]">
+      {#each banners as banner, index}
+        {#if banner.kind === 'info'}
+          <div class="bg-blue-950 border border-blue-700/30 p-2 text-sm text-blue-300/80">
+            {@render bannerComponent(banner, index)}
+          </div>
+        {:else if banner.kind === 'warning'}
+          <div class="bg-amber-950 border border-amber-700/30 p-2 text-sm text-amber-300/80">
+            {@render bannerComponent(banner, index)}
+          </div>
+        {:else if banner.kind === 'error'}
+          <div class="bg-rose-950 border border-rose-700/30 p-2 text-sm text-rose-300/80">
+            {@render bannerComponent(banner, index)}
+          </div>
+        {/if}
+      {/each}
+    </div>
+  {/if}
 
   {#if draggingFile}
     <Modal title="File drag detected!" open closable={false} {ondragleave}>
