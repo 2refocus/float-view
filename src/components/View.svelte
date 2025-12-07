@@ -108,6 +108,7 @@
 
           globalState.unitsFromData = results.units;
           source = results.source;
+          banners = [];
 
           for (const err of results.errors) {
             if (err instanceof FloatControlLimitedError) {
