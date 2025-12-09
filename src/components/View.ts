@@ -76,10 +76,13 @@ export function computeStats(rows: RowWithIndex[], pois: PointOfInterest[]): Rid
     dutySum += row.duty;
 
     // currents
-    if (!highestMotorCurrent || row.current_motor > highestMotorCurrent) highestMotorCurrent = row.current_motor;
+    if (!highestMotorCurrent || Math.abs(row.current_motor) > highestMotorCurrent) {
+      highestMotorCurrent = Math.abs(row.current_motor);
+    }
+
     if (row.current_field_weakening) {
-      if (!highestFieldWeakeningCurrent || row.current_field_weakening > highestFieldWeakeningCurrent)
-        highestFieldWeakeningCurrent = row.current_field_weakening;
+      if (!highestFieldWeakeningCurrent || Math.abs(row.current_field_weakening) > highestFieldWeakeningCurrent)
+        highestFieldWeakeningCurrent = Math.abs(row.current_field_weakening);
     }
 
     // temperatures
