@@ -110,6 +110,13 @@
           source = results.source;
           banners = [];
 
+          if (file === demoFile) {
+            banners.push({
+              text: 'This is just a demo ride, close the ride using the button in the header to load your own ride.',
+              kind: 'warning',
+            });
+          }
+
           for (const err of results.errors) {
             if (err instanceof FloatControlLimitedError) {
               banners.push({ text: err.message, kind: 'warning' });
