@@ -15,7 +15,7 @@ jobs:
           node-version: 20
           cache: 'npm'
       - name: Install dependencies
-        run: npm install --legacy-peer-deps
+        run: npm install --legacy-peer-deps --force
       - name: Check
         run: npm run checks
       - name: Build
