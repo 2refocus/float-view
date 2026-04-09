@@ -34,7 +34,9 @@ jobs:
           node-version: 22
           cache: 'npm'
       - name: Install dependencies
-        run: npm install --legacy-peer-deps --force
+        run: |
+          rm -f package-lock.json
+          npm install --legacy-peer-deps
       - name: Checks
         run: npm run checks
 
@@ -57,7 +59,9 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm install --legacy-peer-deps --force
+        run: |
+          rm -f package-lock.json
+          npm install --legacy-peer-deps
 
       # build
       - name: Extract version
