@@ -79,7 +79,7 @@ export const MapLineOptions: Record<MapLine, (index: number) => PolylineOptions 
   }),
 };
 
-export function createMapButton(label: string, position: ControlPosition, onclick: () => void): typeof Leaflet.Control {
+export function createMapButton(label: string, position: ControlPosition, onclick: () => void) {
   return Leaflet.Control.extend({
     options: { position },
     onAdd: () => {
