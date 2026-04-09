@@ -49,13 +49,22 @@ export class VideoSegmentManager {
 
     log('Scanning CSV for ride segments...');
 
-    let lastIndex = startingIndex;
-    for (let i = startingIndex; i < endingIndex; i++) {
-      const prev = data[i - 1];
-      const currentData = data[i]!;
+    // Filter out rows with missing Time data
+    const validData = data.slice(startingIndex, endingIndex).filter((row) => {
+      return row != null && typeof row[RowKey.Time] === 'number';
+    });
+
+    if (validData.length !== endingIndex - startingIndex) {
+      log(`Filtered out ${endingIndex - startingIndex - validData.length} rows with missing time data.`);
+    }
+
+    let lastIndex = 0;
+    for (let i = 1; i < validData.length; i++) {
+      const prev = validData[i - 1]!;
+      const currentData = validData[i]!;
       // if the time difference is more than the threshold, we assume a pause
-      if (prev && currentData[RowKey.Time] - prev[RowKey.Time] > gapThresholdSecs) {
-        const slice = data.slice(lastIndex, i);
+      if (currentData[RowKey.Time] - prev[RowKey.Time] > gapThresholdSecs) {
+        const slice = validData.slice(lastIndex, i);
         if (slice.length > 1) {
           log(`Detected pause at ${currentData[RowKey.Time]}s`);
           this.addSegment(slice);
@@ -64,8 +73,8 @@ export class VideoSegmentManager {
       }
     }
 
-    if (lastIndex < endingIndex) {
-      const slice = data.slice(lastIndex, endingIndex);
+    if (lastIndex < validData.length) {
+      const slice = validData.slice(lastIndex);
       this.addSegment(slice);
     }
 
@@ -74,10 +83,14 @@ export class VideoSegmentManager {
         `Found ${this.getSegmentCount()} segments.`,
         ...this.getSegments().map((segment, i) => {
           const start = segment.startTime();
-          const end = segment.endTime() + 1;
-          const duration = (end - start).toFixed(2);
+          const end = segment.endTime();
+          if (start == null || end == null) {
+            return `    ${i + 1}: <missing time data>`;
+          }
+          const endPlusOne = end + 1;
+          const duration = (endPlusOne - start).toFixed(2);
           return [
-            `    ${i + 1}: ${start.toFixed(2)}s to ${end.toFixed(2)}s`,
+            `    ${i + 1}: ${start.toFixed(2)}s to ${endPlusOne.toFixed(2)}s`,
             `        - duration: ${duration}s`,
             `        - at index: ${segment.data[0]!.index}`,
           ].join('\n');
