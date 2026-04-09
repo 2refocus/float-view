@@ -2,7 +2,7 @@ import csv, { type ParseResult } from 'papaparse';
 import { floatControlKeyMap, FloatControlRawHeader } from './float-control.types';
 import demoCsv from '../../assets/demo.csv?raw';
 import { attachIndex } from '../misc';
-import { RowKey, State, type Row, type RowWithIndex, Units } from './types';
+import { RowKey, State, stateCodeMap, type Row, type RowWithIndex, Units } from './types';
 import { FloatControlLimitedError, ParseError } from './errors';
 
 const transformHeader = (header: string) => {
@@ -26,7 +26,7 @@ const parseFloatValue = (input: string): number => {
 
 const transform = <C extends RowKey>(value: string, column: C): Row[C] => {
   switch (column) {
-    case RowKey.State:
+    case RowKey.State: {
       const lower = value.toLowerCase();
       switch (lower) {
         case 'startup':
@@ -41,11 +41,18 @@ const transform = <C extends RowKey>(value: string, column: C): Row[C] => {
           return State.Wheelslip as Row[C];
         case 'quickstop':
           return State.Quickstop as Row[C];
-        default:
-          console.warn(`Unknown state: '${value}'`);
         case 'riding':
+          return State.Riding as Row[C];
+        default: {
+          const code = parseInt(value, 10);
+          if (!Number.isNaN(code) && code in stateCodeMap) {
+            return stateCodeMap[code] as Row[C];
+          }
+          console.warn(`Unknown state: '${value}'`);
           return lower as Row[C];
+        }
       }
+    }
     case RowKey.Duty:
       return parseFloatValue(value.replace('%', '')) as Row[C];
     default:
